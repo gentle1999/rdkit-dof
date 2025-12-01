@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 15:22:40
 LastEditors: TMJ
-LastEditTime: 2025-12-01 16:17:11
+LastEditTime: 2025-12-01 19:26:56
 Description: Generates comparison images for the README file.
 - Default RDKit vs. rdkit-dof for a single molecule.
 - Default RDKit vs. rdkit-dof for a grid of molecules.
@@ -29,21 +29,30 @@ def generate_single_mol_comparison():
     legend = "Paclitaxel"
 
     # 1. Default RDKit drawing
-    drawer = Draw.rdMolDraw2D.MolDraw2DSVG(img_size[0], img_size[1])
-    drawer.DrawMolecule(mol, legend=legend)
-    drawer.FinishDrawing()
+    img = Draw.MolToImage(mol, size=img_size)
+    img.save("assets/comparison_single_default.png")
+    print("  - Saved assets/comparison_single_default.png")
+
+    # 1. Default RDKit drawing (SVG)
+    img_svg = Draw.MolToSVG(mol, width=img_size[0], height=img_size[1])
     with open("assets/comparison_single_default.svg", "w") as f:
-        f.write(drawer.GetDrawingText())
+        f.write(img_svg)
     print("  - Saved assets/comparison_single_default.svg")
 
     # 2. rdkit-dof drawing
     dofconfig.use_style("default")
-    print(dofconfig.model_dump())
     dof_img = MolToDofImage(
+        mol, size=img_size, legend=legend, use_svg=False, return_image=True
+    )
+    dof_img.save("assets/comparison_single_dof.png")
+    print("  - Saved assets/comparison_single_dof.png")
+
+    # 2. rdkit-dof drawing (SVG)
+    dof_img_svg = MolToDofImage(
         mol, size=img_size, legend=legend, use_svg=True, return_image=False
     )
     with open("assets/comparison_single_dof.svg", "w") as f:
-        f.write(dof_img)
+        f.write(dof_img_svg)
     print("  - Saved assets/comparison_single_dof.svg")
 
 
@@ -87,27 +96,48 @@ def generate_grid_comparison():
     grid_img = Draw.MolsToGridImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
-        subImgSize=img_size,
+        subImgSize=(img_size[0] * 2, img_size[1] * 2),
+        legends=legends,
+        useSVG=False,
+        returnPNG=False,
+    )
+    grid_img.save("assets/comparison_grid_default.png", dpi=(800, 800))
+    print("  - Saved assets/comparison_grid_default.png")
+
+    grid_img_svg = Draw.MolsToGridImage(
+        mols_with_conformer,
+        molsPerRow=mols_per_row,
+        subImgSize=(img_size[0] * 2, img_size[1] * 2),
         legends=legends,
         useSVG=True,
     )
     with open("assets/comparison_grid_default.svg", "w") as f:
-        f.write(grid_img.data)
+        f.write(grid_img_svg.data)
     print("  - Saved assets/comparison_grid_default.svg")
 
     # 2. rdkit-dof grid
     dofconfig.use_style("default")
-    print(dofconfig.model_dump())
     dof_grid_img = MolGridToDofImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
-        subImgSize=img_size,
+        subImgSize=(img_size[0] * 2, img_size[1] * 2),
+        legends=legends,
+        use_svg=False,
+        return_image=True,
+    )
+    dof_grid_img.save("assets/comparison_grid_dof.png", dpi=(800, 800))
+    print("  - Saved assets/comparison_grid_dof.png")
+
+    dof_grid_img_svg = MolGridToDofImage(
+        mols_with_conformer,
+        molsPerRow=mols_per_row,
+        subImgSize=(img_size[0] * 2, img_size[1] * 2),
         legends=legends,
         use_svg=True,
         return_image=False,
     )
     with open("assets/comparison_grid_dof.svg", "w") as f:
-        f.write(dof_grid_img)
+        f.write(dof_grid_img_svg)
     print("  - Saved assets/comparison_grid_dof.svg")
 
 

@@ -308,6 +308,28 @@ def MolGridToDofImage(  # noqa: N802
     if settings is None:
         settings = dofconfig
 
+    # Handle empty input list to avoid RDKit errors
+    if not mols:
+        n_rows = 1
+        full_width = subImgSize[0] * molsPerRow
+        full_height = subImgSize[1] * n_rows
+        if use_svg:
+            drawer = rdMolDraw2D.MolDraw2DSVG(
+                full_width, full_height, subImgSize[0], subImgSize[1]
+            )
+            drawer.FinishDrawing()
+            svg_text = drawer.GetDrawingText()
+            return SVG(svg_text) if return_image else svg_text
+        else:
+            # For non-SVG, return a blank PIL image or its byte representation
+            blank_image = Image.new("RGB", (full_width, full_height), (255, 255, 255))
+            if return_image:
+                return blank_image
+            else:
+                byte_arr = io.BytesIO()
+                blank_image.save(byte_arr, format="PNG")
+                return byte_arr.getvalue()
+
     valid_mols = []
     valid_legends = []
 
