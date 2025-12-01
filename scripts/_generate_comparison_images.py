@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 15:22:40
 LastEditors: TMJ
-LastEditTime: 2025-12-01 19:26:56
+LastEditTime: 2025-12-01 19:49:15
 Description: Generates comparison images for the README file.
 - Default RDKit vs. rdkit-dof for a single molecule.
 - Default RDKit vs. rdkit-dof for a grid of molecules.
@@ -107,7 +107,7 @@ def generate_grid_comparison():
     grid_img_svg = Draw.MolsToGridImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
-        subImgSize=(img_size[0] * 2, img_size[1] * 2),
+        subImgSize=img_size,
         legends=legends,
         useSVG=True,
     )
@@ -131,7 +131,7 @@ def generate_grid_comparison():
     dof_grid_img_svg = MolGridToDofImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
-        subImgSize=(img_size[0] * 2, img_size[1] * 2),
+        subImgSize=img_size,
         legends=legends,
         use_svg=True,
         return_image=False,
