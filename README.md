@@ -153,15 +153,15 @@ dofconfig.atom_colors[8] = (1.0, 0.2, 0.2) # Set Oxygen to bright red
 
 ### Environment Variables
 
-You can also customize the drawing style by setting environment variables. All configuration properties have a corresponding environment variable, named `MOL_DOF_` plus the property name (in upper snake case).
+You can also customize the drawing style by setting environment variables. All configuration properties have a corresponding environment variable, named `RDKIT_DOF_` plus the property name (in upper snake case).
 
 For example, to set `fog_color` to dark gray (RGB 0.1, 0.1, 0.1) and `min_alpha` to 0.2, you can add this to your `.env` file:
 
 ```env
 # Set fog color to dark gray
-MOL_DOF_FOG_COLOR=[0.1, 0.1, 0.1]
+RDKIT_DOF_FOG_COLOR=[0.1, 0.1, 0.1]
 # Adjust minimum alpha
-MOL_DOF_MIN_ALPHA=0.2
+RDKIT_DOF_MIN_ALPHA=0.2
 ```
 
 ### Main Configuration Properties

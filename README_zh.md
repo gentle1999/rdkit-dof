@@ -1,8 +1,8 @@
-[English](README.md)
-
 # rdkit-dof
 
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+[English](README.md)
 
 `rdkit-dof` 是一个 Python 工具包，它使用 RDKit 为分子提供具备“景深”(Depth of Field, DOF) 或“雾化”效果的精美 2D 图像。通过分子的三维构象，距离观察者较远的原子和键会以更高的透明度和更低的饱和度进行绘制，从而在 2D 图像中创造出视觉上的深度感。
 
@@ -29,7 +29,7 @@
 - **图像处理:** Pillow
 - **配置管理:** Pydantic
 
-## 安装步骤：
+## 安装步骤
 
 ```bash
 pip install rdkit-dof
@@ -153,15 +153,15 @@ dofconfig.atom_colors[8] = (1.0, 0.2, 0.2) # 将氧原子颜色设为亮红色
 
 ### 环境变量
 
-您也可以通过设置环境变量来定制绘图效果。所有配置属性都有对应的环境变量，名称为 `MOL_DOF_` 加上属性名（驼峰式）。
+您也可以通过设置环境变量来定制绘图效果。所有配置属性都有对应的环境变量，名称为 `RDKIT_DOF_` 加上属性名（upper snake case）。
 
 例如，要设置 `fog_color` 为深灰色 (RGB 0.1, 0.1, 0.1)，最小透明度为 0.2，您可以在 `.env` 文件中添加：
 
 ```env
 # 将雾颜色设为深灰色 (RGB 0.1, 0.1, 0.1)
-MOL_DOF_FOG_COLOR=[0.1, 0.1, 0.1]
+RDKIT_DOF_FOG_COLOR=[0.1, 0.1, 0.1]
 # 调整最小透明度
-MOL_DOF_MIN_ALPHA=0.2
+RDKIT_DOF_MIN_ALPHA=0.2
 ```
 
 ### 主要配置属性

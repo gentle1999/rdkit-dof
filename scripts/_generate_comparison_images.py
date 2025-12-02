@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 15:22:40
 LastEditors: TMJ
-LastEditTime: 2025-12-01 19:49:15
+LastEditTime: 2025-12-02 11:16:21
 Description: Generates comparison images for the README file.
 - Default RDKit vs. rdkit-dof for a single molecule.
 - Default RDKit vs. rdkit-dof for a grid of molecules.
@@ -34,7 +34,10 @@ def generate_single_mol_comparison():
     print("  - Saved assets/comparison_single_default.png")
 
     # 1. Default RDKit drawing (SVG)
-    img_svg = Draw.MolToSVG(mol, width=img_size[0], height=img_size[1])
+    drawer = Draw.rdMolDraw2D.MolDraw2DSVG(img_size[0], img_size[1])
+    drawer.DrawMolecule(mol, legend=legend)
+    drawer.FinishDrawing()
+    img_svg = drawer.GetDrawingText()
     with open("assets/comparison_single_default.svg", "w") as f:
         f.write(img_svg)
     print("  - Saved assets/comparison_single_default.svg")

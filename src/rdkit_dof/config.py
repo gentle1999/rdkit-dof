@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 12:38:03
 LastEditors: TMJ
-LastEditTime: 2025-12-01 15:48:00
+LastEditTime: 2025-12-02 11:12:43
 Description: 请填写简介
 """
 
@@ -37,7 +37,7 @@ class DofDrawSettings(BaseSettings):
     atom_colors: dict[int, tuple[float, float, float]] = Field(default_factory=dict)
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="MOL_DOF_", extra="ignore"
+        env_file=".env", env_prefix="RDKIT_DOF_", extra="ignore"
     )
 
     @model_validator(mode="after")
