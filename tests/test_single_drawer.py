@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 14:54:08
 LastEditors: TMJ
-LastEditTime: 2025-12-01 18:52:19
+LastEditTime: 2025-12-21 22:40:15
 Description: Test the core functionality of MolToDofImage.
 """
 
@@ -123,7 +123,7 @@ def test_mol_to_dof_image_raises_error_for_none_mol(empty_mol):
     # THEN
     with pytest.raises(ValueError, match="Invalid molecule"):
         # WHEN
-        MolToDofImage(None) # type: ignore
+        MolToDofImage(None)  # type: ignore
 
 
 def test_mol_to_dof_image_handles_empty_mol(empty_mol):
@@ -159,3 +159,58 @@ def test_use_style_switches_configuration(sample_mol_3d):
 
     # Clean up by resetting to default for other tests
     dofconfig.use_style("default")
+
+
+def test_mol_to_dof_image_highlighting(sample_mol_3d):
+    """
+    Tests that MolToDofImage accepts highlighting parameters without error.
+    """
+    # WHEN
+    img = MolToDofImage(
+        sample_mol_3d,
+        use_svg=False,
+        highlightAtoms=[0],
+        highlightBonds=[0],
+        highlightColor=(0, 1, 0, 0.5),
+    )
+
+    # THEN
+    assert img is not None
+    assert isinstance(img, Image)
+
+
+def test_mol_to_dof_image_saves_png_file(sample_mol_3d, tmp_path):
+    """
+    Tests that MolToDofImage saves a PNG file when filename is provided.
+    """
+    # GIVEN
+    output_file = tmp_path / "test_output.png"
+
+    # WHEN
+    MolToDofImage(sample_mol_3d, use_svg=False, filename=str(output_file))
+
+    # THEN
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+    with open(output_file, "rb") as f:
+        header = f.read(8)
+        assert header.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_mol_to_dof_image_saves_svg_file(sample_mol_3d, tmp_path):
+    """
+    Tests that MolToDofImage saves an SVG file when filename is provided.
+    """
+    # GIVEN
+    output_file = tmp_path / "test_output.svg"
+
+    # WHEN
+    MolToDofImage(sample_mol_3d, use_svg=True, filename=str(output_file))
+
+    # THEN
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+    with open(output_file) as f:
+        content = f.read()
+        assert "<svg" in content
+        assert content.strip().endswith("</svg>")

@@ -2,13 +2,18 @@
 Author: TMJ
 Date: 2025-12-01 12:37:38
 LastEditors: TMJ
-LastEditTime: 2025-12-02 12:12:41
+LastEditTime: 2025-12-21 21:15:57
 Description: 请填写简介
 """
 
+import importlib.metadata
+
 from .config import DofDrawSettings, dofconfig
-from .core import MolGridToDofImage, MolToDofImage
+from .core import MolsToGridDofImage, MolToDofImage
 
-__all__ = ["MolGridToDofImage", "MolToDofImage", "DofDrawSettings", "dofconfig"]
+try:
+    __version__ = importlib.metadata.version("myrepositorytemplate")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "unknown"
 
-__version__ = "0.1.2"
+__all__ = ["MolsToGridDofImage", "MolToDofImage", "DofDrawSettings", "dofconfig"]

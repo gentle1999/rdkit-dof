@@ -1,4 +1,3 @@
-# ruff: noqa: S101
 import base64
 
 import pytest
@@ -6,8 +5,7 @@ from PIL import Image
 from rdkit import Chem
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 
-# 假设你的包名是 rdkit_dof，请确保在 python path 中
-from rdkit_dof.core import DofDrawSettings, MolGridToDofImage
+from rdkit_dof.core import DofDrawSettings, MolsToGridDofImage
 
 try:
     from IPython.display import SVG
@@ -50,7 +48,7 @@ def settings():
 def test_integration_returns_png_image(molecules_3d):
     """Tests that a grid image is created as a PIL Image."""
     # WHEN
-    img = MolGridToDofImage(molecules_3d, use_svg=False, return_image=True)
+    img = MolsToGridDofImage(molecules_3d, use_svg=False, return_image=True)
 
     # THEN
     assert img is not None
@@ -64,7 +62,7 @@ def test_integration_returns_png_image(molecules_3d):
 def test_integration_returns_svg_image(molecules_3d):
     """Tests that a grid image is created as an SVG object."""
     # WHEN
-    svg = MolGridToDofImage(molecules_3d, use_svg=True, return_image=True)
+    svg = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=True)
 
     # THEN
     assert svg is not None
@@ -74,7 +72,7 @@ def test_integration_returns_svg_image(molecules_3d):
 def test_integration_returns_png_bytes(molecules_3d):
     """Tests that a grid image is created as PNG bytes."""
     # WHEN
-    png_data = MolGridToDofImage(molecules_3d, use_svg=False, return_image=False)
+    png_data = MolsToGridDofImage(molecules_3d, use_svg=False, return_image=False)
 
     # THEN
     assert png_data is not None
@@ -85,7 +83,7 @@ def test_integration_returns_png_bytes(molecules_3d):
 def test_integration_returns_svg_str(molecules_3d):
     """Tests that a grid image is created as an SVG string."""
     # WHEN
-    svg_text = MolGridToDofImage(molecules_3d, use_svg=True, return_image=False)
+    svg_text = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=False)
 
     # THEN
     assert svg_text is not None
@@ -97,7 +95,7 @@ def test_integration_returns_svg_str(molecules_3d):
 def test_integration_handles_empty_list():
     """Tests that an empty list of molecules returns an image without error."""
     # WHEN
-    img = MolGridToDofImage([], use_svg=False, return_image=True)
+    img = MolsToGridDofImage([], use_svg=False, return_image=True)
 
     # THEN
     assert isinstance(img, Image.Image)
@@ -109,12 +107,68 @@ def test_integration_handles_list_with_none():
     mols = [Chem.MolFromSmiles("CCO"), None, Chem.MolFromSmiles("CNC")]
 
     # WHEN
-    img = MolGridToDofImage(mols, use_svg=False, return_image=True)
+    img = MolsToGridDofImage(mols, use_svg=False, return_image=True)
 
     # THEN
     assert isinstance(img, Image.Image)
     assert img.width > 0
     assert img.height > 0
+
+
+def test_integration_highlighting(molecules_3d):
+    """
+    Tests that MolsToGridDofImage accepts highlighting parameters without error.
+    """
+    # WHEN
+    img = MolsToGridDofImage(
+        molecules_3d,
+        use_svg=False,
+        return_image=True,
+        highlightAtomLists=[[0] for _ in molecules_3d],
+        highlightBondLists=[[0] for _ in molecules_3d],
+        highlightColor=(0, 1, 0, 0.5),
+    )
+
+    # THEN
+    assert img is not None
+    assert isinstance(img, Image.Image)
+
+
+def test_integration_saves_png_file(molecules_3d, tmp_path):
+    """
+    Tests that MolsToGridDofImage saves a PNG file when filename is provided.
+    """
+    # GIVEN
+    output_file = tmp_path / "test_grid_output.png"
+
+    # WHEN
+    MolsToGridDofImage(molecules_3d, use_svg=False, filename=str(output_file))
+
+    # THEN
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+    with open(output_file, "rb") as f:
+        header = f.read(8)
+        assert header.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_integration_saves_svg_file(molecules_3d, tmp_path):
+    """
+    Tests that MolsToGridDofImage saves an SVG file when filename is provided.
+    """
+    # GIVEN
+    output_file = tmp_path / "test_grid_output.svg"
+
+    # WHEN
+    MolsToGridDofImage(molecules_3d, use_svg=True, filename=str(output_file))
+
+    # THEN
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+    with open(output_file) as f:
+        content = f.read()
+        assert "<svg" in content
+        assert content.strip().endswith("</svg>")
 
 
 # ==========================================
@@ -159,7 +213,7 @@ def test_mocked_happy_path_svg_return_image(
         (molecules_3d[2], {}, {}),
     ]
 
-    result = MolGridToDofImage(molecules_3d, use_svg=True, return_image=True)
+    result = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=True)
     assert isinstance(result, SVG)
 
 
@@ -172,7 +226,7 @@ def test_mocked_happy_path_svg_return_text(
         (molecules_3d[2], {}, {}),
     ]
 
-    result = MolGridToDofImage(molecules_3d, use_svg=True, return_image=False)
+    result = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=False)
     assert result == "<svg></svg>"
 
 
@@ -185,7 +239,7 @@ def test_mocked_happy_path_png_return_image(
         (molecules_3d[2], {}, {}),
     ]
 
-    result = MolGridToDofImage(molecules_3d, use_svg=False, return_image=True)
+    result = MolsToGridDofImage(molecules_3d, use_svg=False, return_image=True)
     assert isinstance(result, Image.Image)
 
 
@@ -198,7 +252,7 @@ def test_mocked_happy_path_png_return_bytes(
         (molecules_3d[2], {}, {}),
     ]
 
-    result = MolGridToDofImage(molecules_3d, use_svg=False, return_image=False)
+    result = MolsToGridDofImage(molecules_3d, use_svg=False, return_image=False)
     assert isinstance(result, bytes)
     assert result.startswith(b"\x89PNG")
 
@@ -211,7 +265,7 @@ def test_mocked_mols_with_none(molecules_3d, mock_prepare_mol_data, mock_svg_dra
     ]
 
     input_mols = [molecules_3d[0], None, molecules_3d[2]]
-    result = MolGridToDofImage(input_mols, use_svg=True, return_image=False)
+    result = MolsToGridDofImage(input_mols, use_svg=True, return_image=False)
 
     assert result == "<svg></svg>"
     assert mock_prepare_mol_data.call_count == 3
@@ -229,7 +283,7 @@ def test_mocked_invalid_mol_is_handled(
         (molecules_3d[2], {"atom": "color"}, {"bond": "color"}),
     ]
 
-    result = MolGridToDofImage(molecules_3d, use_svg=True, return_image=False)
+    result = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=False)
 
     assert result == "<svg></svg>"
     # Check that DrawMolecules was still called with 3 molecules
@@ -247,4 +301,4 @@ def test_mocked_no_svg_support(molecules_3d, mock_prepare_mol_data, mocker):
     mocker.patch("rdkit_dof.core.svg_support", False)
 
     with pytest.raises(ImportError):
-        MolGridToDofImage([molecules_3d[0]], use_svg=True, return_image=True)
+        MolsToGridDofImage([molecules_3d[0]], use_svg=True, return_image=True)

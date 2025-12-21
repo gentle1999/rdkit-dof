@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 15:22:40
 LastEditors: TMJ
-LastEditTime: 2025-12-02 11:16:21
+LastEditTime: 2025-12-21 22:21:27
 Description: Generates comparison images for the README file.
 - Default RDKit vs. rdkit-dof for a single molecule.
 - Default RDKit vs. rdkit-dof for a grid of molecules.
@@ -13,7 +13,7 @@ from rdkit.Chem import Draw
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 
-from rdkit_dof import MolGridToDofImage, MolToDofImage, dofconfig
+from rdkit_dof import MolsToGridDofImage, MolToDofImage, dofconfig
 
 
 def generate_single_mol_comparison():
@@ -44,18 +44,25 @@ def generate_single_mol_comparison():
 
     # 2. rdkit-dof drawing
     dofconfig.use_style("default")
-    dof_img = MolToDofImage(
-        mol, size=img_size, legend=legend, use_svg=False, return_image=True
+    MolToDofImage(
+        mol,
+        size=img_size,
+        legend=legend,
+        use_svg=False,
+        return_image=False,
+        filename="assets/comparison_single_dof.png",
     )
-    dof_img.save("assets/comparison_single_dof.png")
     print("  - Saved assets/comparison_single_dof.png")
 
     # 2. rdkit-dof drawing (SVG)
-    dof_img_svg = MolToDofImage(
-        mol, size=img_size, legend=legend, use_svg=True, return_image=False
+    MolToDofImage(
+        mol,
+        size=img_size,
+        legend=legend,
+        use_svg=True,
+        return_image=False,
+        filename="assets/comparison_single_dof.svg",
     )
-    with open("assets/comparison_single_dof.svg", "w") as f:
-        f.write(dof_img_svg)
     print("  - Saved assets/comparison_single_dof.svg")
 
 
@@ -120,32 +127,152 @@ def generate_grid_comparison():
 
     # 2. rdkit-dof grid
     dofconfig.use_style("default")
-    dof_grid_img = MolGridToDofImage(
+    MolsToGridDofImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
         subImgSize=(img_size[0] * 2, img_size[1] * 2),
         legends=legends,
         use_svg=False,
-        return_image=True,
+        return_image=False,
+        filename="assets/comparison_grid_dof.png",
     )
-    dof_grid_img.save("assets/comparison_grid_dof.png", dpi=(800, 800))
     print("  - Saved assets/comparison_grid_dof.png")
 
-    dof_grid_img_svg = MolGridToDofImage(
+    MolsToGridDofImage(
         mols_with_conformer,
         molsPerRow=mols_per_row,
         subImgSize=img_size,
         legends=legends,
         use_svg=True,
         return_image=False,
+        filename="assets/comparison_grid_dof.svg",
     )
-    with open("assets/comparison_grid_dof.svg", "w") as f:
-        f.write(dof_grid_img_svg)
     print("  - Saved assets/comparison_grid_dof.svg")
+
+
+def generate_highlighting_showcase():
+    """Generates images showcasing the highlighting functionality."""
+    print("Generating highlighting showcase...")
+
+    # 1. Single molecule highlighting
+    mol = Chem.MolFromSmiles("COc1ccc(C(=O)O)cc1")  # Anisic acid
+    mol = Chem.AddHs(mol)
+    EmbedMolecule(mol, randomSeed=42)
+    MMFFOptimizeMolecule(mol)
+
+    # Highlight the carboxylic acid group (C(=O)O)
+    patt = Chem.MolFromSmarts("C(=O)[OH]")
+    match = mol.GetSubstructMatch(patt)
+
+    img_size = (400, 300)
+    legend = "Anisic acid (COOH highlighted)"
+
+    dofconfig.use_style("default")
+
+    # Test highlightAtoms and highlightBonds
+    # Find bonds between matched atoms
+    highlight_bonds = []
+    for b in mol.GetBonds():
+        if b.GetBeginAtomIdx() in match and b.GetEndAtomIdx() in match:
+            highlight_bonds.append(b.GetIdx())
+
+    MolToDofImage(
+        mol,
+        size=img_size,
+        legend=legend,
+        highlightAtoms=match,
+        highlightBonds=highlight_bonds,
+        highlightColor=(0.0, 1.0, 0.0, 0.5),  # Green highlight
+        use_svg=False,
+        return_image=False,
+        filename="assets/showcase_highlight_single.png",
+    )
+    print("  - Saved assets/showcase_highlight_single.png")
+
+    # 1. Single molecule highlighting (SVG)
+    MolToDofImage(
+        mol,
+        size=img_size,
+        legend=legend,
+        highlightAtoms=match,
+        highlightBonds=highlight_bonds,
+        highlightColor=(0.0, 1.0, 0.0, 0.5),  # Green highlight
+        use_svg=True,
+        return_image=False,
+        filename="assets/showcase_highlight_single.svg",
+    )
+    print("  - Saved assets/showcase_highlight_single.svg")
+
+    # 2. Grid highlighting
+    smiles_list = [
+        "c1ccccc1C(=O)O",  # Benzoic acid
+        "CCO",  # Ethanol
+        "CC(=O)O",  # Acetic acid
+        "c1ccccc1O",  # Phenol
+    ]
+    mols = [Chem.MolFromSmiles(s) for s in smiles_list]
+    legends = ["Benzoic acid", "Ethanol", "Acetic acid", "Phenol"]
+
+    patt_acid = Chem.MolFromSmarts("C(=O)[OH]")
+    patt_hydroxyl = Chem.MolFromSmarts("[OH]")
+
+    highlight_atom_lists = []
+    highlight_bond_lists = []
+
+    mols_with_conformer = []
+    for m in mols:
+        m = Chem.AddHs(m)
+        EmbedMolecule(m, randomSeed=42)
+        MMFFOptimizeMolecule(m)
+        mols_with_conformer.append(m)
+
+        # Highlight acid group if present, else hydroxyl
+        match = m.GetSubstructMatch(patt_acid)
+        if not match:
+            match = m.GetSubstructMatch(patt_hydroxyl)
+
+        highlight_atom_lists.append(match)
+
+        bonds = []
+        for b in m.GetBonds():
+            if b.GetBeginAtomIdx() in match and b.GetEndAtomIdx() in match:
+                bonds.append(b.GetIdx())
+        highlight_bond_lists.append(bonds)
+
+    MolsToGridDofImage(
+        mols_with_conformer,
+        molsPerRow=2,
+        subImgSize=(300, 300),
+        legends=legends,
+        highlightAtomLists=highlight_atom_lists,
+        highlightBondLists=highlight_bond_lists,
+        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Orange highlight
+        use_svg=False,
+        return_image=False,
+        filename="assets/showcase_highlight_grid.png",
+    )
+    print("  - Saved assets/showcase_highlight_grid.png")
+
+    # 2. Grid highlighting (SVG)
+    MolsToGridDofImage(
+        mols_with_conformer,
+        molsPerRow=2,
+        subImgSize=(300, 300),
+        legends=legends,
+        highlightAtomLists=highlight_atom_lists,
+        highlightBondLists=highlight_bond_lists,
+        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Orange highlight
+        use_svg=True,
+        return_image=False,
+        filename="assets/showcase_highlight_grid.svg",
+    )
+    print("  - Saved assets/showcase_highlight_grid.svg")
 
 
 if __name__ == "__main__":
     generate_single_mol_comparison()
     print("-" * 20)
     generate_grid_comparison()
+    print("-" * 20)
+    generate_highlighting_showcase()
     print("\nAll comparison images generated successfully.")

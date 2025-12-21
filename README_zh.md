@@ -22,6 +22,14 @@
 | :-------------------------------------------------: | :-----------------------------------------: |
 | ![Grid Default](assets/comparison_grid_default.svg) | ![Grid DOF](assets/comparison_grid_dof.svg) |
 
+### 高亮支持 (Highlighting)
+
+现在您可以在保持景深效果的同时，高亮特定的原子和键。
+
+|                        单分子高亮                         |                       网格高亮                        |
+| :-------------------------------------------------------: | :---------------------------------------------------: |
+| ![Highlight Single](assets/showcase_highlight_single.svg) | ![Highlight Grid](assets/showcase_highlight_grid.svg) |
+
 ## 技术栈
 
 - **核心:** Python 3.9+
@@ -55,22 +63,17 @@ MMFFOptimizeMolecule(mol)
 # 2. (可选) 切换到预设的主题
 dofconfig.use_style("default")
 
-# 3. 调用核心函数生成图像 (返回 SVG 文本)
-svg_data = MolToDofImage(
+# 3. 生成并直接保存图像
+MolToDofImage(
     mol,
     size=(1000, 800),
     legend="Paclitaxel (Taxol)",
-    use_svg=True,
-    return_image=False, # 设置为 False 以获取原始数据 (str 或 bytes)
+    filename="paclitaxel.svg"
 )
-
-# 4. 保存到文件
-with open("paclitaxel.svg", "w") as f:
-    f.write(svg_data)
 
 print("Image saved to paclitaxel.svg")
 
-# 5. (可选) 显示图像 (在 Jupyter Notebook 中)
+# 4. (可选) 显示图像 (在 Jupyter Notebook 中)
 svg_img = MolToDofImage(
     mol,
     size=(1000, 800),
@@ -96,10 +99,15 @@ MolToDofImage(
     legend: str = "",
     use_svg: bool = True,
     return_image: bool = True,
+    return_drawer: bool = False,
     *,
     settings: Optional[DofDrawSettings] = None,
+    highlightAtoms: Optional[Sequence[int]] = None,
+    highlightBonds: Optional[Sequence[int]] = None,
+    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
+    filename: Optional[str] = None,
     **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes]
+) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
 ```
 
 - **`mol`**: RDKit 分子对象，需要包含一个 3D 构象。
@@ -107,25 +115,35 @@ MolToDofImage(
 - **`legend`**: 图像下方的图例文字。
 - **`use_svg`**: `True` 返回 SVG，`False` 返回 PNG。
 - **`return_image`**: `True` 返回 IPython/Pillow 图像对象，`False` 返回原始数据（SVG 为字符串，PNG 为字节）。
+- **`return_drawer`**: `True` 返回 `MolDraw2D` 实例，`False` 返回图像数据。
+- **`highlightAtoms`**: 需要高亮的原子索引列表。
+- **`highlightBonds`**: 需要高亮的键索引列表。
+- **`highlightColor`**: 高亮颜色 (RGBA, 0.0-1.0)。
+- **`filename`**: 如果提供，图像将保存到此路径。
 - **`settings`**: 一个 `DofDrawSettings` 实例，用于局部配置。
 - **`**kwargs`**: 其他 RDKit `MolDrawOptions`参数。
 
-### `MolGridToDofImage`
+### `MolsToGridDofImage`
 
 为分子网格生成景深效果图像，其参数与 RDKit 的 `MolsToGridImage` 类似。
 
 ```python
-MolGridToDofImage(
+MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,
     subImgSize: tuple[int, int] = (300, 300),
     legends: Optional[Sequence[Union[str, None]]] = None,
     use_svg: bool = True,
     return_image: bool = True,
+    return_drawer: bool = False,
     *,
     settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
+    filename: Optional[str] = None,
     **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes]
+) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
 ```
 
 ## 配置项

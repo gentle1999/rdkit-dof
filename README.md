@@ -22,6 +22,14 @@ To better showcase the effect of `rdkit-dof`, we have compared it with RDKit's d
 | :-------------------------------------------------: | :-----------------------------------------: |
 | ![Grid Default](assets/comparison_grid_default.svg) | ![Grid DOF](assets/comparison_grid_dof.svg) |
 
+### Highlighting Support
+
+You can now highlight specific atoms and bonds while maintaining the DOF effect.
+
+|                    Single Highlighting                    |                   Grid Highlighting                   |
+| :-------------------------------------------------------: | :---------------------------------------------------: |
+| ![Highlight Single](assets/showcase_highlight_single.svg) | ![Highlight Grid](assets/showcase_highlight_grid.svg) |
+
 ## Tech Stack
 
 - **Core:** Python 3.9+
@@ -55,22 +63,17 @@ MMFFOptimizeMolecule(mol)
 # 2. (Optional) Switch to a preset theme
 dofconfig.use_style("default")
 
-# 3. Call the core function to generate the image (returns SVG text)
-svg_data = MolToDofImage(
+# 3. Generate and save the image directly
+MolToDofImage(
     mol,
     size=(1000, 800),
     legend="Paclitaxel (Taxol)",
-    use_svg=True,
-    return_image=False, # Set to False to get raw data (str or bytes)
+    filename="paclitaxel.svg"
 )
-
-# 4. Save to a file
-with open("paclitaxel.svg", "w") as f:
-    f.write(svg_data)
 
 print("Image saved to paclitaxel.svg")
 
-# 5. (Optional) Display the image (in a Jupyter Notebook)
+# 4. (Optional) Display the image (in a Jupyter Notebook)
 svg_img = MolToDofImage(
     mol,
     size=(1000, 800),
@@ -96,10 +99,15 @@ MolToDofImage(
     legend: str = "",
     use_svg: bool = True,
     return_image: bool = True,
+    return_drawer: bool = False,
     *,
     settings: Optional[DofDrawSettings] = None,
+    highlightAtoms: Optional[Sequence[int]] = None,
+    highlightBonds: Optional[Sequence[int]] = None,
+    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
+    filename: Optional[str] = None,
     **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes]
+) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
 ```
 
 - **`mol`**: RDKit molecule object, which must contain a 3D conformation.
@@ -107,26 +115,37 @@ MolToDofImage(
 - **`legend`**: Legend text below the image.
 - **`use_svg`**: `True` returns SVG, `False` returns PNG.
 - **`return_image`**: `True` returns an IPython/Pillow image object, `False` returns raw data (string for SVG, bytes for PNG).
+- **`highlightAtoms`**: List of atom indices to highlight.
+- **`highlightBonds`**: List of bond indices to highlight.
+- **`highlightColor`**: RGBA color for highlighting (0.0-1.0).
+- **`filename`**: If provided, the image will be saved to this path.
 - **`settings`**: A `DofDrawSettings` instance for local configuration.
 - **`**kwargs`**: Other RDKit `MolDrawOptions` parameters.
 
-### `MolGridToDofImage`
+### `MolsToGridDofImage`
 
 Generates a DOF image for a grid of molecules, with parameters similar to RDKit's `MolsToGridImage`.
 
 ```python
-MolGridToDofImage(
+MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,
     subImgSize: tuple[int, int] = (300, 300),
     legends: Optional[Sequence[Union[str, None]]] = None,
     use_svg: bool = True,
     return_image: bool = True,
+    return_drawer: bool = False,
     *,
     settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
+    filename: Optional[str] = None,
     **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes]
+) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
 ```
+
+You can obtain the drawer instance for further customization.
 
 ## Configuration
 
