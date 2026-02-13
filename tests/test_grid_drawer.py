@@ -10,7 +10,7 @@ from rdkit_dof.core import DofDrawSettings, MolsToGridDofImage
 try:
     from IPython.display import SVG
 except ImportError:
-    pass
+    SVG = None
 
 
 # ==========================================
@@ -151,7 +151,7 @@ def test_integration_saves_png_file(molecules_3d, tmp_path):
         header = f.read(8)
         assert header.startswith(b"\x89PNG\r\n\x1a\n")
 
-
+@pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_integration_saves_svg_file(molecules_3d, tmp_path):
     """
     Tests that MolsToGridDofImage saves an SVG file when filename is provided.
@@ -203,7 +203,7 @@ def mock_cairo_drawer(mocker):
     mock_instance.GetDrawingText.return_value = png_data
     return mock_instance
 
-
+@pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_mocked_happy_path_svg_return_image(
     molecules_3d, mock_prepare_mol_data, mock_svg_drawer
 ):
@@ -216,7 +216,7 @@ def test_mocked_happy_path_svg_return_image(
     result = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=True)
     assert isinstance(result, SVG)
 
-
+@pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_mocked_happy_path_svg_return_text(
     molecules_3d, mock_prepare_mol_data, mock_svg_drawer
 ):

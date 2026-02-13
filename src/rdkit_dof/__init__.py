@@ -12,7 +12,7 @@ from .config import DofDrawSettings, dofconfig
 from .core import MolsToGridDofImage, MolToDofImage
 
 try:
-    __version__ = importlib.metadata.version("myrepositorytemplate")
+    __version__ = importlib.metadata.version("rdkit-dof")
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 

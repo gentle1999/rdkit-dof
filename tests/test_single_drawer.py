@@ -2,7 +2,7 @@
 Author: TMJ
 Date: 2025-12-01 14:54:08
 LastEditors: TMJ
-LastEditTime: 2025-12-21 22:40:15
+LastEditTime: 2026-02-13 19:07:11
 Description: Test the core functionality of MolToDofImage.
 """
 
@@ -18,7 +18,7 @@ from rdkit_dof.core import MolToDofImage
 try:
     from IPython.display import SVG
 except ImportError:
-    pass
+    SVG = None
 
 
 @pytest.fixture(scope="module")
@@ -196,7 +196,7 @@ def test_mol_to_dof_image_saves_png_file(sample_mol_3d, tmp_path):
         header = f.read(8)
         assert header.startswith(b"\x89PNG\r\n\x1a\n")
 
-
+@pytest.mark.skipif(SVG is None, reason="IPython is not installed")
 def test_mol_to_dof_image_saves_svg_file(sample_mol_3d, tmp_path):
     """
     Tests that MolToDofImage saves an SVG file when filename is provided.

@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 from rdkit import Chem
 from rdkit.Chem.Draw import (
-    IPythonConsole,  # type: ignore
     MolDrawOptions,
     rdMolDraw2D,
 )
@@ -19,8 +18,10 @@ from .config import DofDrawSettings, dofconfig
 
 try:
     from IPython.display import SVG
+    from rdkit.Chem.Draw import IPythonConsole  # type: ignore
 except ImportError:
     svg_support = False
+    IPythonConsole = None
 else:
     svg_support = True
 
