@@ -73,11 +73,17 @@ python_version = "3.8"
 strict = true                # 开启严格模式
 warn_return_any = false      # RDKit 经常返回 Any，建议关闭此警告以减少噪音
 warn_unused_configs = true
+no_site_packages = true      # 避免解析 RDKit wheel 中平台相关的第三方 stub
 
 # 针对 RDKit 的特殊配置
 # RDKit 是二进制扩展，Mypy 经常无法找到其类型定义
 [[tool.mypy.overrides]]
 module = ["rdkit.*", "rdkit.Chem.*", "rdkit.Chem.Draw.*"]
+ignore_missing_imports = true
+
+# 针对科学计算/图像库的特殊配置
+[[tool.mypy.overrides]]
+module = ["numpy", "PIL"]
 ignore_missing_imports = true
 
 # 针对 IPython 的特殊配置

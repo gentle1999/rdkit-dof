@@ -301,7 +301,7 @@ def MolToDofImage(  # noqa: N802
             return _make_svg_image(svg_text)
         return svg_text
     else:
-        png_data: bytes = drawer.GetDrawingText()  # type: ignore
+        png_data: bytes = drawer.GetDrawingText()  # type: ignore[assignment, unused-ignore]
         if filename:
             with open(filename, "wb") as f:
                 f.write(png_data)
@@ -535,7 +535,7 @@ def MolsToGridDofImage(  # noqa: N802
             return _make_svg_image(grid_svg_text)
         return grid_svg_text
     else:
-        png_data: bytes = drawer.GetDrawingText()  # type: ignore
+        png_data: bytes = drawer.GetDrawingText()  # type: ignore[assignment, unused-ignore]
         if filename:
             with open(filename, "wb") as f:
                 f.write(png_data)
