@@ -17,9 +17,14 @@ from typing import (
 import numpy as np
 from PIL import Image
 from rdkit import Chem
-from rdkit.Chem import Draw as ChemDraw
-from rdkit.Chem.Draw import MolDrawOptions, rdMolDraw2D
-from rdkit.Chem.Draw.rdMolDraw2D import MolDraw2D
+from rdkit.Chem import Draw as ChemDraw  # pyright: ignore[reportAttributeAccessIssue]
+from rdkit.Chem.Draw import (  # pyright: ignore[reportMissingImports]
+    MolDrawOptions,
+    rdMolDraw2D,
+)
+from rdkit.Chem.Draw.rdMolDraw2D import (  # pyright: ignore[reportMissingImports]
+    MolDraw2D,
+)
 from rdkit.Chem.rdDepictor import Compute2DCoords
 
 from .config import DofDrawSettings, dofconfig
