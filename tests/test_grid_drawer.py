@@ -8,7 +8,7 @@ from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit_dof.core import DofDrawSettings, MolsToGridDofImage
 
 try:
-    from IPython.display import SVG
+    from IPython.core.display import SVG
 except ImportError:
     SVG = None
 
@@ -65,6 +65,7 @@ def test_integration_returns_svg_image(molecules_3d):
     svg = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=True)
 
     # THEN
+    assert SVG is not None
     assert svg is not None
     assert isinstance(svg, SVG)
 
@@ -134,6 +135,32 @@ def test_integration_highlighting(molecules_3d):
     assert isinstance(img, Image.Image)
 
 
+def test_grid_highlighting_uses_saturated_color(
+    molecules_3d, mock_prepare_mol_data, mock_svg_drawer
+):
+    """
+    Tests that explicit grid highlights skip DOF fading and use opaque color.
+    """
+    mock_prepare_mol_data.return_value = (
+        molecules_3d[0],
+        {1: (0.2, 0.2, 0.2, 0.4)},
+        {1: (0.2, 0.2, 0.2, 0.4)},
+    )
+
+    MolsToGridDofImage(
+        [molecules_3d[0]],
+        use_svg=True,
+        return_image=False,
+        highlightAtomLists=[[0]],
+        highlightBondLists=[[0]],
+        highlightColor=(0.0, 0.6, 1.0, 0.25),
+    )
+
+    draw_kwargs = mock_svg_drawer.DrawMolecules.call_args.kwargs
+    assert draw_kwargs["highlightAtomColors"][0][0] == (0.0, 0.6, 1.0, 1.0)
+    assert draw_kwargs["highlightBondColors"][0][0] == (0.0, 0.6, 1.0, 1.0)
+
+
 def test_integration_saves_png_file(molecules_3d, tmp_path):
     """
     Tests that MolsToGridDofImage saves a PNG file when filename is provided.
@@ -150,6 +177,7 @@ def test_integration_saves_png_file(molecules_3d, tmp_path):
     with open(output_file, "rb") as f:
         header = f.read(8)
         assert header.startswith(b"\x89PNG\r\n\x1a\n")
+
 
 @pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_integration_saves_svg_file(molecules_3d, tmp_path):
@@ -203,6 +231,7 @@ def mock_cairo_drawer(mocker):
     mock_instance.GetDrawingText.return_value = png_data
     return mock_instance
 
+
 @pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_mocked_happy_path_svg_return_image(
     molecules_3d, mock_prepare_mol_data, mock_svg_drawer
@@ -214,7 +243,9 @@ def test_mocked_happy_path_svg_return_image(
     ]
 
     result = MolsToGridDofImage(molecules_3d, use_svg=True, return_image=True)
+    assert SVG is not None
     assert isinstance(result, SVG)
+
 
 @pytest.mark.skipif(SVG is None, reason="IPythonConsole not available")
 def test_mocked_happy_path_svg_return_text(

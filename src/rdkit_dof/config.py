@@ -6,78 +6,241 @@ LastEditTime: 2025-12-02 11:12:43
 Description: 请填写简介
 """
 
-from typing import Literal, Union
+import ast
+import json
+import os
+from collections.abc import Mapping as MappingABC
+from collections.abc import Sequence as SequenceABC
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Literal, Mapping, Optional, Tuple, Union, cast
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from rdkit.Chem import Mol, RWMol
-from typing_extensions import Self
 
-from .palettes import DARK_NEON_STYLE, DEFAULT_STYLE, JACS_STYLE, NATURE_STYLE
+from .palettes import (
+    DARK_NEON_STYLE,
+    DEFAULT_STYLE,
+    JACS_STYLE,
+    NATURE_STYLE,
+    AtomColorMap,
+)
 
 StyleName = Literal["default", "nature", "jacs", "dark"]
+RGBColor = Tuple[float, float, float]
+Size = Tuple[int, int]
+EnvFile = Optional[Union[str, Path]]
+
+_ENV_PREFIX = "RDKIT_DOF_"
+_DEFAULT_FOG_COLOR: RGBColor = (0.95, 0.95, 0.95)
+_UNSET = object()
+_STYLE_MAP: Dict[StyleName, AtomColorMap] = {
+    "default": DEFAULT_STYLE,
+    "nature": NATURE_STYLE,
+    "jacs": JACS_STYLE,
+    "dark": DARK_NEON_STYLE,
+}
 
 
-class DofDrawSettings(BaseSettings):
+def _strip_env_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def _load_dotenv(env_file: EnvFile) -> Dict[str, str]:
+    if env_file is None:
+        return {}
+
+    path = Path(env_file)
+    if not path.is_file():
+        return {}
+
+    values: Dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        values[key.strip()] = _strip_env_value(value)
+    return values
+
+
+def _load_env_values(env_file: EnvFile) -> Dict[str, str]:
+    values = _load_dotenv(env_file)
+    values.update(
+        {key: value for key, value in os.environ.items() if key.startswith(_ENV_PREFIX)}
+    )
+    return values
+
+
+def _select_value(
+    field_name: str,
+    explicit_value: object,
+    env_values: Mapping[str, str],
+    default_value: object,
+) -> object:
+    if explicit_value is not _UNSET:
+        return explicit_value
+
+    env_key = f"{_ENV_PREFIX}{field_name.upper()}"
+    if env_key in env_values:
+        return _parse_raw_value(env_values[env_key])
+
+    return default_value
+
+
+def _parse_raw_value(raw_value: str) -> object:
+    value = raw_value.strip()
+    if value == "":
+        return value
+
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        return ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return value
+
+
+def _coerce_style(value: object) -> StyleName:
+    if value in _STYLE_MAP:
+        return cast(StyleName, value)
+    raise ValueError(
+        "preset_style must be one of 'default', 'nature', 'jacs', or 'dark'"
+    )
+
+
+def _coerce_rgb(value: object, field_name: str) -> RGBColor:
+    if not isinstance(value, SequenceABC) or isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must be a sequence of three numbers")
+    if len(value) != 3:
+        raise ValueError(f"{field_name} must contain exactly three values")
+    return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def _coerce_size(value: object) -> Size:
+    if not isinstance(value, SequenceABC) or isinstance(value, (str, bytes)):
+        raise ValueError("default_size must be a sequence of two integers")
+    if len(value) != 2:
+        raise ValueError("default_size must contain exactly two values")
+    return (int(value[0]), int(value[1]))
+
+
+def _coerce_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "y", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "n", "off"}:
+            return False
+    raise ValueError("enable_ipython must be a boolean value")
+
+
+def _coerce_float(value: object, field_name: str) -> float:
+    if isinstance(value, (str, int, float)):
+        return float(value)
+    raise ValueError(f"{field_name} must be a number")
+
+
+def _coerce_atom_colors(value: object) -> AtomColorMap:
+    if value is None:
+        return {}
+    if not isinstance(value, MappingABC):
+        raise ValueError("atom_colors must be a mapping of atomic number to RGB color")
+
+    colors: AtomColorMap = {}
+    for atomic_num, color in value.items():
+        colors[int(atomic_num)] = _coerce_rgb(color, "atom_colors")
+    return colors
+
+
+@dataclass(init=False)
+class DofDrawSettings:
     """
+    Drawing configuration with optional RDKIT_DOF_ environment overrides.
+
     Logic:
     1. load preset style
     2. if dark mode, and fog color is default, set fog color to (0.1, 0.1, 0.1)
     3. override specific atoms with user-provided atom_colors
     """
 
-    preset_style: StyleName = "default"
+    preset_style: StyleName
+    fog_color: RGBColor
+    min_alpha: float
+    default_size: Size
+    enable_ipython: bool
+    atom_colors: AtomColorMap
 
-    fog_color: tuple[float, float, float] = (0.95, 0.95, 0.95)
-    min_alpha: float = 0.4
-    default_size: tuple[int, int] = (800, 800)
+    def __init__(
+        self,
+        preset_style: object = _UNSET,
+        fog_color: object = _UNSET,
+        min_alpha: object = _UNSET,
+        default_size: object = _UNSET,
+        enable_ipython: object = _UNSET,
+        atom_colors: object = _UNSET,
+        *,
+        env_file: EnvFile = ".env",
+        **_: object,
+    ) -> None:
+        env_values = _load_env_values(env_file)
 
-    enable_ipython: bool = True
-
-    atom_colors: dict[int, tuple[float, float, float]] = Field(default_factory=dict)
-
-    model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="RDKIT_DOF_", extra="ignore"
-    )
-
-    @model_validator(mode="after")
-    def _init_merge_configuration(self) -> Self:
+        self.preset_style = _coerce_style(
+            _select_value("preset_style", preset_style, env_values, "default")
+        )
+        self.fog_color = _coerce_rgb(
+            _select_value("fog_color", fog_color, env_values, _DEFAULT_FOG_COLOR),
+            "fog_color",
+        )
+        self.min_alpha = _coerce_float(
+            _select_value("min_alpha", min_alpha, env_values, 0.4),
+            "min_alpha",
+        )
+        self.default_size = _coerce_size(
+            _select_value("default_size", default_size, env_values, (800, 800))
+        )
+        self.enable_ipython = _coerce_bool(
+            _select_value("enable_ipython", enable_ipython, env_values, True)
+        )
+        self.atom_colors = _coerce_atom_colors(
+            _select_value("atom_colors", atom_colors, env_values, {})
+        )
         self._apply_style_logic(self.preset_style)
-        return self
 
-    def _apply_style_logic(self, style: str):
-        style_map = {
-            "default": DEFAULT_STYLE,
-            "nature": NATURE_STYLE,
-            "jacs": JACS_STYLE,
-            "dark": DARK_NEON_STYLE,
-        }
-        # If preset_style is specified, use it; otherwise, use default
-        base_colors = style_map.get(style, DEFAULT_STYLE).copy()
+    def _apply_style_logic(self, style: StyleName) -> None:
+        base_colors = _STYLE_MAP[style].copy()
 
-        if self.preset_style == "dark":
-            if self.fog_color == (0.95, 0.95, 0.95):
-                self.fog_color = (0.1, 0.1, 0.1)
+        if self.preset_style == "dark" and self.fog_color == _DEFAULT_FOG_COLOR:
+            self.fog_color = (0.1, 0.1, 0.1)
 
         if self.atom_colors:
             base_colors.update(self.atom_colors)
 
         self.atom_colors = base_colors
 
-    def get_atom_color(self, atomic_num: int) -> tuple[float, float, float]:
+    def get_atom_color(self, atomic_num: int) -> RGBColor:
         return self.atom_colors.get(
             atomic_num, self.atom_colors.get(6, (0.2, 0.2, 0.2))
         )
 
-    def use_style(self, style: StyleName):
+    def use_style(self, style: StyleName) -> None:
         """
         Switch to a different preset style, resetting any custom atom colors.
         """
-        self.preset_style = style
+        self.preset_style = _coerce_style(style)
         self.atom_colors = {}
-        self._apply_style_logic(style)
+        self._apply_style_logic(self.preset_style)
 
-    def enable_ipython_integration(self, enable: bool = True):
+    def enable_ipython_integration(self, enable: bool = True) -> None:
         """
         Toggle whether to use the DOF effect drawer as the default renderer
         for RDKit Mol objects in Jupyter/IPython.
@@ -89,10 +252,11 @@ class DofDrawSettings(BaseSettings):
             from IPython.core.getipython import get_ipython
         except ImportError:
             return
-        ip = get_ipython()
+        get_ipython_func = cast(Any, get_ipython)
+        ip = get_ipython_func()
         if ip is None:
             return
-        svg_formatter = ip.display_formatter.formatters["image/svg+xml"]  # type: ignore
+        svg_formatter = ip.display_formatter.formatters["image/svg+xml"]
 
         if enable:
             from .core import MolToDofImage

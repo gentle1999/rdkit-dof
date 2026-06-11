@@ -1,38 +1,59 @@
 import io
 import math
-from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any, Literal, Optional, Union, overload
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+    overload,
+)
 
 import numpy as np
 from PIL import Image
 from rdkit import Chem
-from rdkit.Chem.Draw import (
-    MolDrawOptions,
-    rdMolDraw2D,
-)
+from rdkit.Chem import Draw as ChemDraw
+from rdkit.Chem.Draw import MolDrawOptions, rdMolDraw2D
 from rdkit.Chem.Draw.rdMolDraw2D import MolDraw2D
 from rdkit.Chem.rdDepictor import Compute2DCoords
 
 from .config import DofDrawSettings, dofconfig
 
+RGBColor = Tuple[float, float, float]
+RGBAColor = Tuple[float, float, float, float]
+Size = Tuple[int, int]
+ColorMap = Dict[int, RGBAColor]
+IPythonConsole: Any = None
+
+_SVG: Any = None
 try:
-    from IPython.display import SVG
-    from rdkit.Chem.Draw import IPythonConsole  # type: ignore
+    from IPython.core.display import SVG
 except ImportError:
     svg_support = False
-    IPythonConsole = None
 else:
+    IPythonConsole = getattr(ChemDraw, "IPythonConsole", None)
+    _SVG = SVG
     svg_support = True
+
+
+def _make_svg_image(svg_text: str) -> Any:
+    if not svg_support or _SVG is None:
+        raise ImportError("IPython required for SVG.")
+    return cast(Any, _SVG)(svg_text)
 
 
 @lru_cache(maxsize=4096)
 def _get_atom_dof_color_cached(
-    base_color: tuple[float, float, float],
+    base_color: RGBColor,
     proximity: float,
     min_alpha: float,
-    fog_color: tuple[float, float, float],
-) -> tuple[float, float, float, float]:
+    fog_color: RGBColor,
+) -> RGBAColor:
     """Calculate the RGBA color of an atom with depth-of-field effect."""
     base_rgb = np.array(base_color)
     fog_rgb = np.array(fog_color)
@@ -40,10 +61,15 @@ def _get_atom_dof_color_cached(
     light_rgb = base_rgb * 0.2 + fog_rgb * 0.8
     light_color_rgba = np.array([*light_rgb, min_alpha])
     final_color = light_color_rgba + proximity * (dark_color_rgba - light_color_rgba)
-    return tuple(final_color.tolist())
+    return cast(RGBAColor, tuple(final_color.tolist()))
 
 
-def _apply_rdkit_global_options(target_dopts: MolDrawOptions):
+def _get_saturated_highlight_color(color: RGBAColor) -> RGBAColor:
+    """Use highlight RGB directly and keep it fully opaque."""
+    return (color[0], color[1], color[2], 1.0)
+
+
+def _apply_rdkit_global_options(target_dopts: MolDrawOptions) -> None:
     """Reflect global options from IPythonConsole.drawOptions."""
     if IPythonConsole is None or not hasattr(IPythonConsole, "drawOptions"):
         return
@@ -67,10 +93,10 @@ def _prepare_mol_data(
     mol: Union[Chem.Mol, Chem.RWMol],
     settings: DofDrawSettings,
     keep_key_atom_colors: bool = True,
-) -> tuple[
+) -> Tuple[
     Chem.Mol,
-    dict[int, tuple[float, float, float, float]],
-    dict[int, tuple[float, float, float, float]],
+    ColorMap,
+    ColorMap,
 ]:
     """
     Internal Helper: Process a single molecule for DOF drawing.
@@ -94,7 +120,7 @@ def _prepare_mol_data(
     else:
         proximity = np.full(z_coords.shape, 1.0)
 
-    highlight_atom_colors: dict[int, tuple[float, float, float, float]] = {}
+    highlight_atom_colors: ColorMap = {}
     carbon_base_color = settings.get_atom_color(6)
 
     for i in range(mol_copy.GetNumAtoms()):
@@ -110,7 +136,7 @@ def _prepare_mol_data(
             fog_color=settings.fog_color,
         )
 
-    highlight_bond_colors: dict[int, tuple[float, float, float, float]] = {}
+    highlight_bond_colors: ColorMap = {}
     for i in range(mol_copy.GetNumBonds()):
         bond = mol_copy.GetBondWithIdx(i)
         atom1_idx = bond.GetBeginAtomIdx()
@@ -128,7 +154,7 @@ def _prepare_mol_data(
             settings.fog_color,
         )
         bond_color_arr = (np.array(c1) + np.array(c2)) / 2
-        highlight_bond_colors[i] = tuple(bond_color_arr.tolist())
+        highlight_bond_colors[i] = cast(RGBAColor, tuple(bond_color_arr.tolist()))
 
     return mol_copy, highlight_atom_colors, highlight_bond_colors
 
@@ -141,81 +167,81 @@ def _prepare_mol_data(
 @overload
 def MolToDofImage(
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
+    *,
     use_svg: Literal[True] = True,
     return_image: Literal[True] = True,
     return_drawer: Literal[False] = False,
-    *,
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> "SVG": ...
 @overload
 def MolToDofImage(
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
-    use_svg: Literal[False] = False,
+    *,
+    use_svg: Literal[False],
     return_image: Literal[True] = True,
     return_drawer: Literal[False] = False,
-    *,
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> Image.Image: ...
 @overload
 def MolToDofImage(
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
-    use_svg: Literal[True] = True,
-    return_image: Literal[False] = False,
-    return_drawer: Literal[False] = False,
     *,
+    use_svg: Literal[True] = True,
+    return_image: Literal[False],
+    return_drawer: Literal[False] = False,
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> str: ...
 @overload
 def MolToDofImage(
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
-    use_svg: Literal[False] = False,
-    return_image: Literal[False] = False,
-    return_drawer: Literal[False] = False,
     *,
+    use_svg: Literal[False],
+    return_image: Literal[False],
+    return_drawer: Literal[False] = False,
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> bytes: ...
 @overload
 def MolToDofImage(
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
+    *,
     use_svg: bool = True,
     return_image: bool = True,
-    return_drawer: Literal[True] = True,
-    *,
+    return_drawer: Literal[True],
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> MolDraw2D: ...
 def MolToDofImage(  # noqa: N802
     mol: Union[Chem.Mol, Chem.RWMol],
-    size: Optional[tuple[int, int]] = None,
+    size: Optional[Size] = None,
     legend: str = "",
     use_svg: bool = True,
     return_image: bool = True,
@@ -224,7 +250,7 @@ def MolToDofImage(  # noqa: N802
     settings: Optional[DofDrawSettings] = None,
     highlightAtoms: Optional[Sequence[int]] = None,  # noqa: N803
     highlightBonds: Optional[Sequence[int]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     filename: Optional[str] = None,
     **kwargs: Any,
 ) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]:
@@ -235,12 +261,13 @@ def MolToDofImage(  # noqa: N802
     draw_size = size if size else settings.default_size
 
     ready_mol, atom_colors, bond_colors = _prepare_mol_data(mol, settings)
+    saturated_highlight_color = _get_saturated_highlight_color(highlightColor)
     if highlightAtoms:
         for atom_idx in highlightAtoms:
-            atom_colors[atom_idx] = highlightColor
+            atom_colors[atom_idx] = saturated_highlight_color
     if highlightBonds:
         for bond_idx in highlightBonds:
-            bond_colors[bond_idx] = highlightColor
+            bond_colors[bond_idx] = saturated_highlight_color
     if use_svg:
         drawer = rdMolDraw2D.MolDraw2DSVG(draw_size[0], draw_size[1])
     else:
@@ -271,9 +298,7 @@ def MolToDofImage(  # noqa: N802
             with open(filename, "w") as f:
                 f.write(svg_text)
         if return_image:
-            if not svg_support:
-                raise ImportError("IPython required for SVG.")
-            return SVG(svg_text)
+            return _make_svg_image(svg_text)
         return svg_text
     else:
         png_data: bytes = drawer.GetDrawingText()  # type: ignore
@@ -294,86 +319,86 @@ def MolToDofImage(  # noqa: N802
 def MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
+    *,
     use_svg: Literal[True] = True,
     return_image: Literal[True] = True,
     return_drawer: Literal[False] = False,
-    *,
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> "SVG": ...
 @overload
 def MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
-    use_svg: Literal[False] = False,
+    *,
+    use_svg: Literal[False],
     return_image: Literal[True] = True,
     return_drawer: Literal[False] = False,
-    *,
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> Image.Image: ...
 @overload
 def MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
-    use_svg: Literal[True] = True,
-    return_image: Literal[False] = False,
-    return_drawer: Literal[False] = False,
     *,
+    use_svg: Literal[True] = True,
+    return_image: Literal[False],
+    return_drawer: Literal[False] = False,
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> str: ...
 @overload
 def MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
-    use_svg: Literal[False] = False,
-    return_image: Literal[False] = False,
-    return_drawer: Literal[False] = False,
     *,
+    use_svg: Literal[False],
+    return_image: Literal[False],
+    return_drawer: Literal[False] = False,
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> bytes: ...
 @overload
 def MolsToGridDofImage(
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
+    *,
     use_svg: bool = True,
     return_image: bool = True,
-    return_drawer: Literal[True] = True,
-    *,
+    return_drawer: Literal[True],
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     **kwargs: Any,
 ) -> MolDraw2D: ...
 def MolsToGridDofImage(  # noqa: N802
     mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
     molsPerRow: int = 3,  # noqa: N803
-    subImgSize: tuple[int, int] = (300, 300),  # noqa: N803
+    subImgSize: Size = (300, 300),  # noqa: N803
     legends: Optional[Sequence[Union[str, None]]] = None,
     use_svg: bool = True,
     return_image: bool = True,
@@ -382,7 +407,7 @@ def MolsToGridDofImage(  # noqa: N802
     settings: Optional[DofDrawSettings] = None,
     highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
     highlightBondLists: Optional[Sequence[Sequence[int]]] = None,  # noqa: N803
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),  # noqa: N803
+    highlightColor: RGBAColor = (1.0, 0.0, 0.0, 1.0),  # noqa: N803
     filename: Optional[str] = None,
     **kwargs: Any,
 ) -> Union["SVG", str, Image.Image, bytes]:
@@ -403,11 +428,11 @@ def MolsToGridDofImage(  # noqa: N802
                 full_width, full_height, subImgSize[0], subImgSize[1]
             )
             drawer.FinishDrawing()
-            svg_text = drawer.GetDrawingText()
+            empty_svg_text = drawer.GetDrawingText()
             if filename:
                 with open(filename, "w") as f:
-                    f.write(svg_text)
-            return SVG(svg_text) if return_image else svg_text
+                    f.write(empty_svg_text)
+            return _make_svg_image(empty_svg_text) if return_image else empty_svg_text
         else:
             # For non-SVG, return a blank PIL image or its byte representation
             blank_image = Image.new("RGB", (full_width, full_height), (255, 255, 255))
@@ -428,17 +453,18 @@ def MolsToGridDofImage(  # noqa: N802
         assert len(highlightBondLists) == len(mols), (
             "highlightBondLists must have the same length as mols"
         )
-    valid_mols = []
-    valid_legends = []
+    valid_mols: List[Union[Chem.Mol, Chem.RWMol]] = []
+    valid_legends: List[str] = []
 
-    all_atom_colors = []
-    all_bond_colors = []
-    all_highlight_atoms = []
-    all_highlight_bonds = []
+    all_atom_colors: List[ColorMap] = []
+    all_bond_colors: List[ColorMap] = []
+    all_highlight_atoms: List[List[int]] = []
+    all_highlight_bonds: List[List[int]] = []
     if highlightAtomLists is None:
         highlightAtomLists = [[] for _ in mols]  # noqa: N806
     if highlightBondLists is None:
         highlightBondLists = [[] for _ in mols]  # noqa: N806
+    saturated_highlight_color = _get_saturated_highlight_color(highlightColor)
     for i, (m, atom_list, bond_list) in enumerate(
         zip(mols, highlightAtomLists, highlightBondLists)
     ):
@@ -451,9 +477,9 @@ def MolsToGridDofImage(  # noqa: N802
             ready_mol = m
             atom_colors, bond_colors = {}, {}
         for atom_idx in atom_list:
-            atom_colors[atom_idx] = highlightColor
+            atom_colors[atom_idx] = saturated_highlight_color
         for bond_idx in bond_list:
-            bond_colors[bond_idx] = highlightColor
+            bond_colors[bond_idx] = saturated_highlight_color
         valid_mols.append(ready_mol)
 
         if legends and i < len(legends) and legends[i]:
@@ -501,15 +527,13 @@ def MolsToGridDofImage(  # noqa: N802
         return drawer
     drawer.FinishDrawing()
     if use_svg:
-        svg_text: str = drawer.GetDrawingText()
+        grid_svg_text: str = drawer.GetDrawingText()
         if filename:
             with open(filename, "w") as f:
-                f.write(svg_text)
+                f.write(grid_svg_text)
         if return_image:
-            if not svg_support:
-                raise ImportError("IPython required for SVG.")
-            return SVG(svg_text)
-        return svg_text
+            return _make_svg_image(grid_svg_text)
+        return grid_svg_text
     else:
         png_data: bytes = drawer.GetDrawingText()  # type: ignore
         if filename:

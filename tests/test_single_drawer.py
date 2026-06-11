@@ -16,7 +16,7 @@ from rdkit_dof.config import dofconfig
 from rdkit_dof.core import MolToDofImage
 
 try:
-    from IPython.display import SVG
+    from IPython.core.display import SVG
 except ImportError:
     SVG = None
 
@@ -71,6 +71,7 @@ def test_mol_to_dof_image_returns_svg_image(sample_mol_3d):
     svg = MolToDofImage(sample_mol_3d, use_svg=True, return_image=True)
 
     # THEN
+    assert SVG is not None
     assert svg is not None
     assert isinstance(svg, SVG)
 
@@ -179,6 +180,34 @@ def test_mol_to_dof_image_highlighting(sample_mol_3d):
     assert isinstance(img, Image)
 
 
+def test_mol_to_dof_image_highlighting_uses_saturated_color(sample_mol_3d, mocker):
+    """
+    Tests that explicit highlights skip DOF fading and use opaque color.
+    """
+    mocker.patch(
+        "rdkit_dof.core._prepare_mol_data",
+        return_value=(
+            sample_mol_3d,
+            {0: (0.2, 0.2, 0.2, 0.4)},
+            {0: (0.2, 0.2, 0.2, 0.4)},
+        ),
+    )
+    mock_drawer_cls = mocker.patch("rdkit_dof.core.rdMolDraw2D.MolDraw2DSVG")
+    mock_drawer = mock_drawer_cls.return_value
+
+    MolToDofImage(
+        sample_mol_3d,
+        return_drawer=True,
+        highlightAtoms=[0],
+        highlightBonds=[0],
+        highlightColor=(0.0, 1.0, 0.0, 0.25),
+    )
+
+    draw_kwargs = mock_drawer.DrawMolecule.call_args.kwargs
+    assert draw_kwargs["highlightAtomColors"][0] == (0.0, 1.0, 0.0, 1.0)
+    assert draw_kwargs["highlightBondColors"][0] == (0.0, 1.0, 0.0, 1.0)
+
+
 def test_mol_to_dof_image_saves_png_file(sample_mol_3d, tmp_path):
     """
     Tests that MolToDofImage saves a PNG file when filename is provided.
@@ -195,6 +224,7 @@ def test_mol_to_dof_image_saves_png_file(sample_mol_3d, tmp_path):
     with open(output_file, "rb") as f:
         header = f.read(8)
         assert header.startswith(b"\x89PNG\r\n\x1a\n")
+
 
 @pytest.mark.skipif(SVG is None, reason="IPython is not installed")
 def test_mol_to_dof_image_saves_svg_file(sample_mol_3d, tmp_path):

@@ -1,41 +1,45 @@
 # rdkit-dof
 
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/rdkit-dof.svg)](https://pypi.org/project/rdkit-dof/)
+[![PyPI status](https://img.shields.io/pypi/status/rdkit-dof.svg)](https://pypi.org/project/rdkit-dof/)
+[![Python versions](https://img.shields.io/pypi/pyversions/rdkit-dof.svg)](https://pypi.org/project/rdkit-dof/)
+[![CI/CD](https://github.com/gentle1999/rdkit-dof/actions/workflows/build_test_deploy.yml/badge.svg)](https://github.com/gentle1999/rdkit-dof/actions/workflows/build_test_deploy.yml)
+[![Typing](https://img.shields.io/badge/typing-typed-blue.svg)](pyproject.toml)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-46a2f1.svg)](https://docs.astral.sh/ruff/)
 
-[简体中文](README_zh.md)
+[简体中文](README.zh.md)
 
-`rdkit-dof` is a Python toolkit that uses RDKit to generate beautiful 2D images of molecules with a "Depth of Field" (DOF) or "fog" effect. Based on the molecule's 3D conformation, atoms and bonds farther from the viewer are drawn with higher transparency and lower saturation, creating a sense of visual depth in the 2D image.
+`rdkit-dof` is a lightweight Python package for rendering RDKit molecules with a depth-of-field (DOF) or fog effect. It uses 3D conformer depth to fade distant atoms and bonds, producing clearer visual depth in 2D molecular depictions.
+
+## Highlights
+
+- Single-molecule and grid rendering with RDKit-compatible APIs.
+- SVG and PNG output, including direct file saving.
+- Atom and bond highlighting with saturated colors while the rest keeps DOF fading.
+- Preset styles: `default`, `nature`, `jacs`, and `dark`.
+- Local or global configuration through standard-library dataclasses.
+- Optional Jupyter/IPython integration for RDKit `Mol` display.
 
 ## Comparison
 
-To better showcase the effect of `rdkit-dof`, we have compared it with RDKit's default drawing function.
-
-### Single Molecule Comparison
+### Single Molecule
 
 |                        Default RDKit                        |                  rdkit-dof Effect                   |
 | :---------------------------------------------------------: | :-------------------------------------------------: |
 | ![Paclitaxel Default](assets/comparison_single_default.svg) | ![Paclitaxel DOF](assets/comparison_single_dof.svg) |
 
-### Grid Mode Comparison
+### Grid Mode
 
 |                    Default RDKit                    |              rdkit-dof Effect               |
 | :-------------------------------------------------: | :-----------------------------------------: |
 | ![Grid Default](assets/comparison_grid_default.svg) | ![Grid DOF](assets/comparison_grid_dof.svg) |
 
-### Highlighting Support
-
-You can now highlight specific atoms and bonds while maintaining the DOF effect.
+### Highlighting
 
 |                    Single Highlighting                    |                   Grid Highlighting                   |
 | :-------------------------------------------------------: | :---------------------------------------------------: |
 | ![Highlight Single](assets/showcase_highlight_single.svg) | ![Highlight Grid](assets/showcase_highlight_grid.svg) |
-
-## Tech Stack
-
-- **Core:** Python 3.9+
-- **Cheminformatics:** RDKit
-- **Image Processing:** Pillow
-- **Configuration:** Pydantic
 
 ## Installation
 
@@ -43,9 +47,7 @@ You can now highlight specific atoms and bonds while maintaining the DOF effect.
 pip install rdkit-dof
 ```
 
-## Usage
-
-Here is a basic example of how to generate an image with a depth-of-field effect for a molecule.
+## Quick Start
 
 ```python
 from rdkit import Chem
@@ -53,172 +55,66 @@ from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 from rdkit_dof import MolToDofImage, dofconfig
 
-# 1. Create an RDKit molecule object and generate a 3D conformation
-smiles = "CC1=C2[C@@]([C@]([C@H]([C@@H]3[C@]4([C@H](OC4)C[C@@H]([C@]3(C(=O)[C@@H]2OC(=O)C)C)O)OC(=O)C)OC(=O)c5ccccc5)(C[C@@H]1OC(=O)[C@H](O)[C@@H](NC(=O)c6ccccc6)c7ccccc7)C)C"
-mol = Chem.MolFromSmiles(smiles)
+mol = Chem.MolFromSmiles("CCO")
 mol = Chem.AddHs(mol)
 EmbedMolecule(mol, randomSeed=42)
 MMFFOptimizeMolecule(mol)
 
-# 2. (Optional) Switch to a preset theme
-dofconfig.use_style("default")
+dofconfig.use_style("nature")
 
-# 3. Generate and save the image directly
 MolToDofImage(
     mol,
-    size=(1000, 800),
-    legend="Paclitaxel (Taxol)",
-    filename="paclitaxel.svg"
+    size=(600, 500),
+    legend="Ethanol",
+    filename="ethanol.svg",
 )
-
-print("Image saved to paclitaxel.svg")
-
-# 4. (Optional) Display the image (in a Jupyter Notebook)
-svg_img = MolToDofImage(
-    mol,
-    size=(1000, 800),
-    legend="Paclitaxel (Taxol)",
-    use_svg=True,
-    return_image=True, # Set to True to get an IPython/Pillow image object
-)
-svg_img # Display the image
 ```
 
-## API
+## Examples
 
-This toolkit provides two core drawing functions:
+Open the executed notebook for concrete examples with rendered output:
 
-### `MolToDofImage`
+- [Quickstart Notebook](examples/rdkit_dof_quickstart.en.ipynb): single molecule, style presets, highlighting, grid rendering, configuration, notebook integration, and raw SVG/PNG output.
+- [中文 Notebook](examples/rdkit_dof_quickstart.zh.ipynb): Chinese version with the same runnable examples.
 
-Generates a DOF image for a single molecule.
+Molecules with 3D conformers get true depth-based fading. Molecules without conformers are still supported; 2D coordinates are computed automatically and the depth effect is flat.
 
-```python
-MolToDofImage(
-    mol: Chem.Mol,
-    size: Optional[tuple[int, int]] = None,
-    legend: str = "",
-    use_svg: bool = True,
-    return_image: bool = True,
-    return_drawer: bool = False,
-    *,
-    settings: Optional[DofDrawSettings] = None,
-    highlightAtoms: Optional[Sequence[int]] = None,
-    highlightBonds: Optional[Sequence[int]] = None,
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
-    filename: Optional[str] = None,
-    **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
-```
+## Documentation
 
-- **`mol`**: RDKit molecule object, which must contain a 3D conformation.
-- **`size`**: Image dimensions `(width, height)`.
-- **`legend`**: Legend text below the image.
-- **`use_svg`**: `True` returns SVG, `False` returns PNG.
-- **`return_image`**: `True` returns an IPython/Pillow image object, `False` returns raw data (string for SVG, bytes for PNG).
-- **`highlightAtoms`**: List of atom indices to highlight.
-- **`highlightBonds`**: List of bond indices to highlight.
-- **`highlightColor`**: RGBA color for highlighting (0.0-1.0).
-- **`filename`**: If provided, the image will be saved to this path.
-- **`settings`**: A `DofDrawSettings` instance for local configuration.
-- **`**kwargs`**: Other RDKit `MolDrawOptions` parameters.
-
-### `MolsToGridDofImage`
-
-Generates a DOF image for a grid of molecules, with parameters similar to RDKit's `MolsToGridImage`.
-
-```python
-MolsToGridDofImage(
-    mols: Sequence[Union[Chem.Mol, Chem.RWMol, None]],
-    molsPerRow: int = 3,
-    subImgSize: tuple[int, int] = (300, 300),
-    legends: Optional[Sequence[Union[str, None]]] = None,
-    use_svg: bool = True,
-    return_image: bool = True,
-    return_drawer: bool = False,
-    *,
-    settings: Optional[DofDrawSettings] = None,
-    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
-    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
-    highlightColor: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.5),
-    filename: Optional[str] = None,
-    **kwargs: Any,
-) -> Union["SVG", str, Image.Image, bytes, MolDraw2D]
-```
-
-You can obtain the drawer instance for further customization.
-
-## Configuration
-
-You can customize the drawing style via a global `dofconfig` object or environment variables (`.env`).
-
-### Global Config Object
-
-Modify the properties of the `rdkit_dof.dofconfig` object directly in your code.
-
-```python
-from rdkit_dof import dofconfig
-
-# Use a preset style
-dofconfig.use_style("nature") # Options: 'default', 'nature', 'jacs', 'dark'
-
-# Customize colors and effects
-dofconfig.fog_color = (0.1, 0.1, 0.1) # Background fog color (RGB, 0-1)
-dofconfig.min_alpha = 0.3             # Minimum alpha for the farthest atoms
-dofconfig.default_size = (500, 500)   # Default image size
-
-# Override colors for specific atoms (atomic number -> RGB)
-dofconfig.atom_colors[8] = (1.0, 0.2, 0.2) # Set Oxygen to bright red
-```
-
-### Environment Variables
-
-You can also customize the drawing style by setting environment variables. All configuration properties have a corresponding environment variable, named `RDKIT_DOF_` plus the property name (in upper snake case).
-
-For example, to set `fog_color` to dark gray (RGB 0.1, 0.1, 0.1) and `min_alpha` to 0.2, you can add this to your `.env` file:
-
-```env
-# Set fog color to dark gray
-RDKIT_DOF_FOG_COLOR=[0.1, 0.1, 0.1]
-# Adjust minimum alpha
-RDKIT_DOF_MIN_ALPHA=0.2
-```
-
-### Main Configuration Properties
-
-| Property         | Description                                              | Default (Light Theme)   |
-| ---------------- | -------------------------------------------------------- | ----------------------- |
-| `preset_style`   | Name of the preset style                                 | `"default"`             |
-| `fog_color`      | Fog/background color (RGB, 0-1)                          | `(0.95, 0.95, 0.95)`    |
-| `min_alpha`      | Minimum alpha for the farthest atoms                     | `0.4`                   |
-| `default_size`   | Default image size `(width, height)` for `MolToDofImage` | `(800, 800)`            |
-| `enable_ipython` | Whether to enable IPython image display                  | `True`                  |
-| `atom_colors`    | Atom color map `(dict[int, tuple])`                      | Based on `preset_style` |
-
-## Running the Examples
-
-The script `scripts/_generate_comparison_images.py` is a complete example for generating all the images in this document. You can run it to reproduce them:
-
-```bash
-# Generate comparison images
-python scripts/_generate_comparison_images.py
-```
+- [Usage Guide](docs/usage.md): workflow notes for single molecules, grids, highlighting, notebook integration, and custom RDKit drawing.
+- [API Reference](docs/api.md): signatures and parameter behavior for `MolToDofImage`, `MolsToGridDofImage`, and `DofDrawSettings`.
+- [Configuration](docs/configuration.md): global config, local settings, `.env`, environment variables, and style presets.
 
 ## Compatibility
 
-- **OS:** This project is OS-independent and runs on Linux, macOS, and Windows.
-- **Python Version:** Requires Python 3.9 or higher.
-- **RDKit Version:** Recommended to use `2023.09` or higher.
+- Python 3.8+
+- RDKit 2023.09+
+- Linux, macOS, and Windows
 
-## Contribution Guide
+Python 3.8 installs are constrained to the last compatible RDKit line (`<2024.3.6`).
 
-Contributions of any kind are welcome!
+## Development
 
-1. Fork the repository.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+```bash
+uv sync --all-extras --dev
+uv run pytest
+uv run ruff check .
+uv run mypy src
+uv run pyright
+```
+
+To open the notebook examples:
+
+```bash
+uv run notebook examples/rdkit_dof_quickstart.en.ipynb
+```
+
+To regenerate README showcase images:
+
+```bash
+python scripts/_generate_comparison_images.py
+```
 
 ## License
 
-This project is distributed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is distributed under the MIT License. See [LICENSE](LICENSE) for details.

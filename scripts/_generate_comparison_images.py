@@ -8,12 +8,19 @@ Description: Generates comparison images for the README file.
 - Default RDKit vs. rdkit-dof for a grid of molecules.
 """
 
+from typing import Any
+
 from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 
 from rdkit_dof import MolsToGridDofImage, MolToDofImage, dofconfig
+
+
+def _as_svg_text(svg: Any) -> str:
+    data = getattr(svg, "data", svg)
+    return data if isinstance(data, str) else str(data)
 
 
 def generate_single_mol_comparison():
@@ -122,7 +129,7 @@ def generate_grid_comparison():
         useSVG=True,
     )
     with open("assets/comparison_grid_default.svg", "w") as f:
-        f.write(grid_img_svg.data)
+        f.write(_as_svg_text(grid_img_svg))
     print("  - Saved assets/comparison_grid_default.svg")
 
     # 2. rdkit-dof grid
@@ -182,7 +189,7 @@ def generate_highlighting_showcase():
         legend=legend,
         highlightAtoms=match,
         highlightBonds=highlight_bonds,
-        highlightColor=(0.0, 1.0, 0.0, 0.5),  # Green highlight
+        highlightColor=(0.0, 1.0, 0.0, 1.0),  # Saturated green highlight
         use_svg=False,
         return_image=False,
         filename="assets/showcase_highlight_single.png",
@@ -196,7 +203,7 @@ def generate_highlighting_showcase():
         legend=legend,
         highlightAtoms=match,
         highlightBonds=highlight_bonds,
-        highlightColor=(0.0, 1.0, 0.0, 0.5),  # Green highlight
+        highlightColor=(0.0, 1.0, 0.0, 1.0),  # Saturated green highlight
         use_svg=True,
         return_image=False,
         filename="assets/showcase_highlight_single.svg",
@@ -246,7 +253,7 @@ def generate_highlighting_showcase():
         legends=legends,
         highlightAtomLists=highlight_atom_lists,
         highlightBondLists=highlight_bond_lists,
-        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Orange highlight
+        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Saturated orange highlight
         use_svg=False,
         return_image=False,
         filename="assets/showcase_highlight_grid.png",
@@ -261,7 +268,7 @@ def generate_highlighting_showcase():
         legends=legends,
         highlightAtomLists=highlight_atom_lists,
         highlightBondLists=highlight_bond_lists,
-        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Orange highlight
+        highlightColor=(1.0, 0.5, 0.0, 1.0),  # Saturated orange highlight
         use_svg=True,
         return_image=False,
         filename="assets/showcase_highlight_grid.svg",

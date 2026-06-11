@@ -6,7 +6,9 @@ LastEditTime: 2025-12-01 14:13:11
 Description: 请填写简介
 """
 
-AtomColorMap = dict[int, tuple[float, float, float]]
+from typing import Dict, Tuple
+
+AtomColorMap = Dict[int, Tuple[float, float, float]]
 
 # Basic RDKit-style color map
 DEFAULT_STYLE: AtomColorMap = {
