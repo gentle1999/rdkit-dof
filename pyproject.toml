@@ -47,7 +47,7 @@ dev = [
     "mypy>=1.19.0; python_version >= '3.9'",
     "nbclient>=0.10.1",
     "nbformat>=5.10.4",
-    "notebook>=7.3.3",
+    "notebook>=7.3.3; python_version >= '3.9' or sys_platform != 'win32'",
     "pyright>=1.1.410",
     "pytest>=8.3.5,<8.4; python_version == '3.8'",
     "pytest>=8.4.2; python_version >= '3.9'",
