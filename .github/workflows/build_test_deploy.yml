@@ -86,10 +86,16 @@ jobs:
         run: uv build
 
       - name: Verify release artifacts
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          expected="${GITHUB_REF_NAME#v}"
+          expected="${RELEASE_TAG#v}"
+          echo "Release tag: ${RELEASE_TAG}"
+          echo "Expected package version: ${expected}"
+          ls -la dist
           test -f "dist/rdkit_dof-${expected}.tar.gz"
           test -f "dist/rdkit_dof-${expected}-py3-none-any.whl"
+          ! ls dist/*+* >/dev/null 2>&1
 
       - name: Publish to PyPI
         run: uv publish
