@@ -14,8 +14,8 @@
 
 ## Highlights
 
-- Single-molecule and grid rendering with RDKit-compatible APIs.
-- SVG and PNG output, including direct file saving.
+- Single-molecule, grid, GIF, and animated SVG rendering with RDKit-compatible APIs.
+- SVG, PNG, GIF, and animated SVG output, including direct file saving.
 - Atom and bond highlighting with saturated colors while the rest keeps DOF fading.
 - Preset styles: `default`, `nature`, `jacs`, and `dark`.
 - Local or global configuration through standard-library dataclasses.
@@ -41,6 +41,12 @@
 | :-------------------------------------------------------: | :---------------------------------------------------: |
 | ![Highlight Single](assets/showcase_highlight_single.svg) | ![Highlight Grid](assets/showcase_highlight_grid.svg) |
 
+### Animation
+
+|                 GIF Animation                 |                  SVG Animation                  |
+| :-------------------------------------------: | :---------------------------------------------: |
+| ![DOF GIF animation](assets/showcase_animation.gif) | ![DOF SVG animation](assets/showcase_animation.svg) |
+
 ## Installation
 
 ```bash
@@ -53,7 +59,7 @@ pip install rdkit-dof
 from rdkit import Chem
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
-from rdkit_dof import MolToDofImage, dofconfig
+from rdkit_dof import MolToDofImage, MolsToDofGif, MolsToDofSvgAnimation, dofconfig
 
 mol = Chem.MolFromSmiles("CCO")
 mol = Chem.AddHs(mol)
@@ -68,7 +74,14 @@ MolToDofImage(
     legend="Ethanol",
     filename="ethanol.svg",
 )
+
+MolsToDofGif([mol, mol], size=(600, 500), duration=250, filename="mols.gif")
+MolsToDofSvgAnimation([mol, mol], size=(600, 500), duration=250, filename="mols.svg")
 ```
+
+Unicode/non-ASCII legend text is not supported. `rdkit-dof` emits a warning and
+passes the text through to RDKit unchanged. Use ASCII legends for portable
+output.
 
 ## Examples
 
@@ -81,8 +94,8 @@ Molecules with 3D conformers get true depth-based fading. Molecules without conf
 
 ## Documentation
 
-- [Usage Guide](docs/usage.md): workflow notes for single molecules, grids, highlighting, notebook integration, and custom RDKit drawing.
-- [API Reference](docs/api.md): signatures and parameter behavior for `MolToDofImage`, `MolsToGridDofImage`, and `DofDrawSettings`.
+- [Usage Guide](docs/usage.md): workflow notes for single molecules, grids, animations, highlighting, notebook integration, and custom RDKit drawing.
+- [API Reference](docs/api.md): signatures and parameter behavior for `MolToDofImage`, `MolsToGridDofImage`, `MolsToDofGif`, `MolsToDofSvgAnimation`, and `DofDrawSettings`.
 - [Configuration](docs/configuration.md): global config, local settings, `.env`, environment variables, and style presets.
 
 ## Compatibility
@@ -96,7 +109,7 @@ Python 3.8 installs are constrained to the last compatible RDKit line (`<2024.3.
 ## Development
 
 ```bash
-uv sync --all-extras --dev
+uv sync --group dev
 uv run pytest
 uv run ruff check .
 uv run mypy src
@@ -106,6 +119,7 @@ uv run pyright
 To open the notebook examples:
 
 ```bash
+uv sync --group dev --group notebook
 uv run notebook examples/rdkit_dof_quickstart.en.ipynb
 ```
 

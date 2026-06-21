@@ -39,6 +39,9 @@ MolToDofImage(
 | `filename` | 直接保存生成的 SVG 或 PNG。 |
 | `**kwargs` | 任何匹配的 RDKit `MolDrawOptions` 属性。 |
 
+不支持 Unicode/非 ASCII legend；`rdkit-dof` 会发出 warning 并原样交给
+RDKit。为保证可移植输出，请使用 ASCII legend。
+
 ## `MolsToGridDofImage`
 
 ```python
@@ -72,6 +75,74 @@ MolsToGridDofImage(
 | `highlightBondLists` | 逐分子的键高亮列表；提供时长度必须等于 `len(mols)`。 |
 | 其他参数 | 行为与 `MolToDofImage` 相同。 |
 
+## `MolsToDofGif`
+
+```python
+MolsToDofGif(
+    mols: Sequence[Union[Chem.Mol, Chem.RWMol]],
+    size: Optional[Tuple[int, int]] = None,
+    legends: Optional[Sequence[Union[str, None]]] = None,
+    duration: Union[int, Sequence[int]] = 200,
+    loop: int = 0,
+    *,
+    return_image: bool = True,
+    settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 1.0),
+    filename: Optional[str] = None,
+    **kwargs: Any,
+) -> Union[Image.Image, bytes]
+```
+
+将一组分子绘制为带 DOF 效果的 GIF 动图。每个分子渲染为一帧，并使用相同尺寸。
+
+| 参数 | 说明 |
+| --- | --- |
+| `mols` | 作为帧绘制的分子列表，至少需要包含一个分子。 |
+| `size` | 每帧尺寸 `(宽, 高)`。默认使用 `settings.default_size`。 |
+| `legends` | 可选的逐帧文字；提供时长度必须等于 `len(mols)`。 |
+| `duration` | 每帧持续时间，单位为毫秒。可传入统一整数，也可传入长度等于 `len(mols)` 的逐帧序列。 |
+| `loop` | 传给 Pillow 的 GIF 循环次数。`0` 表示无限循环。 |
+| `return_image` | `True` 返回 Pillow GIF 图像；`False` 返回 GIF bytes。 |
+| `highlightAtomLists` | 逐帧原子高亮列表；提供时长度必须等于 `len(mols)`。 |
+| `highlightBondLists` | 逐帧键高亮列表；提供时长度必须等于 `len(mols)`。 |
+| 其他参数 | 行为与 `MolToDofImage` 相同。 |
+
+## `MolsToDofSvgAnimation`
+
+```python
+MolsToDofSvgAnimation(
+    mols: Sequence[Union[Chem.Mol, Chem.RWMol]],
+    size: Optional[Tuple[int, int]] = None,
+    legends: Optional[Sequence[Union[str, None]]] = None,
+    duration: Union[int, Sequence[int]] = 200,
+    loop: int = 0,
+    *,
+    return_image: bool = True,
+    settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 1.0),
+    filename: Optional[str] = None,
+    **kwargs: Any,
+) -> Union["SVG", str]
+```
+
+将一组分子绘制为矢量 SVG 动画，内部使用 SMIL 的透明度动画切换帧。每个分子渲染为一帧，并使用相同尺寸。
+
+| 参数 | 说明 |
+| --- | --- |
+| `mols` | 作为帧绘制的分子列表，至少需要包含一个分子。 |
+| `size` | 每帧尺寸 `(宽, 高)`。默认使用 `settings.default_size`。 |
+| `legends` | 可选的逐帧文字；提供时长度必须等于 `len(mols)`。 |
+| `duration` | 每帧持续时间，单位为毫秒。可传入统一整数，也可传入长度等于 `len(mols)` 的逐帧序列。 |
+| `loop` | SVG 动画重复次数。`0` 表示无限重复。 |
+| `return_image` | `True` 返回 IPython SVG 对象；`False` 返回 SVG 文本。 |
+| `highlightAtomLists` | 逐帧原子高亮列表；提供时长度必须等于 `len(mols)`。 |
+| `highlightBondLists` | 逐帧键高亮列表；提供时长度必须等于 `len(mols)`。 |
+| 其他参数 | 行为与 `MolToDofImage` 相同。 |
+
 ## `DofDrawSettings`
 
 ```python
@@ -97,6 +168,8 @@ DofDrawSettings(
 from rdkit_dof import (
     DofDrawSettings,
     MolToDofImage,
+    MolsToDofGif,
+    MolsToDofSvgAnimation,
     MolsToGridDofImage,
     dofconfig,
 )

@@ -9,11 +9,23 @@ Description: 请填写简介
 import importlib.metadata
 
 from .config import DofDrawSettings, dofconfig
-from .core import MolsToGridDofImage, MolToDofImage
+from .core import (
+    MolsToDofGif,
+    MolsToDofSvgAnimation,
+    MolsToGridDofImage,
+    MolToDofImage,
+)
 
 try:
     __version__ = importlib.metadata.version("rdkit-dof")
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-__all__ = ["MolsToGridDofImage", "MolToDofImage", "DofDrawSettings", "dofconfig"]
+__all__ = [
+    "MolsToDofGif",
+    "MolsToDofSvgAnimation",
+    "MolsToGridDofImage",
+    "MolToDofImage",
+    "DofDrawSettings",
+    "dofconfig",
+]

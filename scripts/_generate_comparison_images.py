@@ -15,7 +15,13 @@ from rdkit.Chem import Draw
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 
-from rdkit_dof import MolsToGridDofImage, MolToDofImage, dofconfig
+from rdkit_dof import (
+    MolsToDofGif,
+    MolsToDofSvgAnimation,
+    MolsToGridDofImage,
+    MolToDofImage,
+    dofconfig,
+)
 
 
 def _as_svg_text(svg: Any) -> str:
@@ -276,10 +282,52 @@ def generate_highlighting_showcase():
     print("  - Saved assets/showcase_highlight_grid.svg")
 
 
+def generate_animation_showcase():
+    """Generates animated GIF and SVG examples for the README file."""
+    print("Generating animation showcase...")
+    smiles_list = [
+        "CCO",
+        "CCN",
+        "CC(=O)O",
+        "c1ccccc1O",
+    ]
+    legends = ["Ethanol", "Ethylamine", "Acetic acid", "Phenol"]
+    mols = []
+    for smiles in smiles_list:
+        mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.AddHs(mol)
+        EmbedMolecule(mol, randomSeed=42)
+        MMFFOptimizeMolecule(mol)
+        mols.append(mol)
+
+    dofconfig.use_style("default")
+    MolsToDofGif(
+        mols,
+        size=(360, 280),
+        legends=legends,
+        duration=700,
+        return_image=False,
+        filename="assets/showcase_animation.gif",
+    )
+    print("  - Saved assets/showcase_animation.gif")
+
+    MolsToDofSvgAnimation(
+        mols,
+        size=(360, 280),
+        legends=legends,
+        duration=700,
+        return_image=False,
+        filename="assets/showcase_animation.svg",
+    )
+    print("  - Saved assets/showcase_animation.svg")
+
+
 if __name__ == "__main__":
     generate_single_mol_comparison()
     print("-" * 20)
     generate_grid_comparison()
     print("-" * 20)
     generate_highlighting_showcase()
+    print("-" * 20)
+    generate_animation_showcase()
     print("\nAll comparison images generated successfully.")

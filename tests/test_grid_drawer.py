@@ -116,6 +116,40 @@ def test_integration_handles_list_with_none():
     assert img.height > 0
 
 
+def test_grid_image_warns_for_unicode_legend(molecules_3d):
+    with pytest.warns(UserWarning, match="Unicode/non-ASCII legend text"):
+        MolsToGridDofImage(
+            molecules_3d,
+            legends=["乙醇", "二甲醚", "三氟甲苯"],
+            use_svg=True,
+            return_image=False,
+        )
+
+
+def test_grid_image_passes_unicode_legends_to_rdkit(
+    molecules_3d, mock_prepare_mol_data, mock_svg_drawer
+):
+    mock_prepare_mol_data.side_effect = [
+        (molecules_3d[0], {}, {}),
+        (molecules_3d[1], {}, {}),
+        (molecules_3d[2], {}, {}),
+    ]
+
+    with pytest.warns(UserWarning, match="Unicode/non-ASCII legend text"):
+        MolsToGridDofImage(
+            molecules_3d,
+            legends=["乙醇", "二甲醚", "三氟甲苯"],
+            use_svg=True,
+            return_image=False,
+        )
+
+    assert mock_svg_drawer.DrawMolecules.call_args.kwargs["legends"] == [
+        "乙醇",
+        "二甲醚",
+        "三氟甲苯",
+    ]
+
+
 def test_integration_highlighting(molecules_3d):
     """
     Tests that MolsToGridDofImage accepts highlighting parameters without error.

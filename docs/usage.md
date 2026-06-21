@@ -21,6 +21,12 @@ MMFFOptimizeMolecule(mol)
 MolToDofImage(mol, legend="Ethanol", filename="ethanol.svg")
 ```
 
+## Legend Text
+
+Unicode/non-ASCII legend text is not supported. `rdkit-dof` emits a warning and
+passes the text through to RDKit unchanged. Use ASCII legends for portable
+output.
+
 ## Output Modes
 
 SVG is the default. Set `use_svg=False` for PNG output.
@@ -68,6 +74,47 @@ MolsToGridDofImage(
     mols,
     highlightAtomLists=[[0], [], [1, 2]],
     highlightBondLists=[[0], [], []],
+)
+```
+
+## Animation Rendering
+
+Use `MolsToDofGif` when a sequence of RDKit molecules should become an animated
+GIF. Each molecule is rendered as one frame.
+
+```python
+from rdkit_dof import MolsToDofGif
+
+gif_image = MolsToDofGif(
+    mols,
+    size=(500, 400),
+    legends=["Frame 1", "Frame 2", "Frame 3"],
+    duration=250,
+    filename="molecules.gif",
+)
+```
+
+Pass a duration sequence when individual frames need different timings.
+
+```python
+gif_bytes = MolsToDofGif(
+    mols,
+    duration=[150, 250, 400],
+    return_image=False,
+)
+```
+
+Use `MolsToDofSvgAnimation` for vector SVG animation output.
+
+```python
+from rdkit_dof import MolsToDofSvgAnimation
+
+svg_text = MolsToDofSvgAnimation(
+    mols,
+    size=(500, 400),
+    duration=250,
+    return_image=False,
+    filename="molecules.svg",
 )
 ```
 

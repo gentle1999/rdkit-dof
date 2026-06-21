@@ -6,6 +6,8 @@ LastEditTime: 2026-02-13 19:07:11
 Description: Test the core functionality of MolToDofImage.
 """
 
+import warnings
+
 import pytest
 from PIL.Image import Image
 from rdkit import Chem
@@ -102,6 +104,50 @@ def test_mol_to_dof_image_returns_svg_str(sample_mol_3d):
     assert isinstance(svg_text, str)
     assert "<svg" in svg_text
     assert svg_text.strip().endswith("</svg>")
+
+
+def test_mol_to_dof_image_warns_for_unicode_legend(sample_mol_3d):
+    with pytest.warns(UserWarning, match="Unicode/non-ASCII legend text"):
+        MolToDofImage(
+            sample_mol_3d,
+            legend="乙醇",
+            use_svg=True,
+            return_image=False,
+        )
+
+
+def test_mol_to_dof_image_passes_unicode_legend_to_rdkit(sample_mol_3d, mocker):
+    mocker.patch(
+        "rdkit_dof.core._prepare_mol_data",
+        return_value=(sample_mol_3d, {}, {}),
+    )
+    mock_drawer_cls = mocker.patch("rdkit_dof.core.rdMolDraw2D.MolDraw2DSVG")
+    mock_drawer = mock_drawer_cls.return_value
+    mock_drawer.GetDrawingText.return_value = "<svg></svg>"
+
+    with pytest.warns(UserWarning, match="Unicode/non-ASCII legend text"):
+        svg_text = MolToDofImage(
+            sample_mol_3d,
+            legend="乙醇",
+            use_svg=True,
+            return_image=False,
+        )
+
+    assert svg_text == "<svg></svg>"
+    assert mock_drawer.DrawMolecule.call_args.kwargs["legend"] == "乙醇"
+
+
+def test_mol_to_dof_image_allows_ascii_legend_without_warning(sample_mol_3d):
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        MolToDofImage(
+            sample_mol_3d,
+            legend="Ethanol",
+            use_svg=True,
+            return_image=False,
+        )
+
+    assert not record
 
 
 def test_mol_to_dof_image_handles_2d_mol(sample_mol_2d):

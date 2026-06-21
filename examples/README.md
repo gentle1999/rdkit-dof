@@ -10,6 +10,7 @@
 Run one locally with:
 
 ```bash
+uv sync --group dev --group notebook
 uv run notebook examples/rdkit_dof_quickstart.en.ipynb
 uv run notebook examples/rdkit_dof_quickstart.zh.ipynb
 ```

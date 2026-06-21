@@ -39,6 +39,10 @@ Draws one molecule with the DOF effect.
 | `filename` | Saves the generated SVG or PNG directly to a path. |
 | `**kwargs` | Any matching RDKit `MolDrawOptions` attributes. |
 
+Unicode/non-ASCII legend text is not supported. `rdkit-dof` emits a warning and
+passes the text through to RDKit unchanged. Use ASCII legends for portable
+output.
+
 ## `MolsToGridDofImage`
 
 ```python
@@ -72,6 +76,76 @@ Draws a grid of molecules with the DOF effect.
 | `highlightBondLists` | Per-molecule bond highlight lists. Must match `len(mols)` when provided. |
 | Other parameters | Same behavior as `MolToDofImage`. |
 
+## `MolsToDofGif`
+
+```python
+MolsToDofGif(
+    mols: Sequence[Union[Chem.Mol, Chem.RWMol]],
+    size: Optional[Tuple[int, int]] = None,
+    legends: Optional[Sequence[Union[str, None]]] = None,
+    duration: Union[int, Sequence[int]] = 200,
+    loop: int = 0,
+    *,
+    return_image: bool = True,
+    settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 1.0),
+    filename: Optional[str] = None,
+    **kwargs: Any,
+) -> Union[Image.Image, bytes]
+```
+
+Draws a sequence of molecules as an animated GIF with the DOF effect. Each
+molecule becomes one frame rendered at the same size.
+
+| Parameter | Description |
+| --- | --- |
+| `mols` | Molecules to draw as frames. Must contain at least one molecule. |
+| `size` | Frame size as `(width, height)`. Defaults to `settings.default_size`. |
+| `legends` | Optional per-frame legends. Must match `len(mols)` when provided. |
+| `duration` | Frame duration in milliseconds. Use an integer for all frames or a per-frame sequence matching `len(mols)`. |
+| `loop` | GIF loop count passed to Pillow. `0` means loop forever. |
+| `return_image` | `True` returns a Pillow GIF image. `False` returns raw GIF bytes. |
+| `highlightAtomLists` | Per-frame atom highlight lists. Must match `len(mols)` when provided. |
+| `highlightBondLists` | Per-frame bond highlight lists. Must match `len(mols)` when provided. |
+| Other parameters | Same behavior as `MolToDofImage`. |
+
+## `MolsToDofSvgAnimation`
+
+```python
+MolsToDofSvgAnimation(
+    mols: Sequence[Union[Chem.Mol, Chem.RWMol]],
+    size: Optional[Tuple[int, int]] = None,
+    legends: Optional[Sequence[Union[str, None]]] = None,
+    duration: Union[int, Sequence[int]] = 200,
+    loop: int = 0,
+    *,
+    return_image: bool = True,
+    settings: Optional[DofDrawSettings] = None,
+    highlightAtomLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightBondLists: Optional[Sequence[Sequence[int]]] = None,
+    highlightColor: Tuple[float, float, float, float] = (1.0, 0.0, 0.0, 1.0),
+    filename: Optional[str] = None,
+    **kwargs: Any,
+) -> Union["SVG", str]
+```
+
+Draws a sequence of molecules as a vector animated SVG using SMIL opacity
+animation. Each molecule becomes one frame rendered at the same size.
+
+| Parameter | Description |
+| --- | --- |
+| `mols` | Molecules to draw as frames. Must contain at least one molecule. |
+| `size` | Frame size as `(width, height)`. Defaults to `settings.default_size`. |
+| `legends` | Optional per-frame legends. Must match `len(mols)` when provided. |
+| `duration` | Frame duration in milliseconds. Use an integer for all frames or a per-frame sequence matching `len(mols)`. |
+| `loop` | Repeat count for the SVG animation. `0` means repeat indefinitely. |
+| `return_image` | `True` returns an IPython SVG object. `False` returns raw SVG text. |
+| `highlightAtomLists` | Per-frame atom highlight lists. Must match `len(mols)` when provided. |
+| `highlightBondLists` | Per-frame bond highlight lists. Must match `len(mols)` when provided. |
+| Other parameters | Same behavior as `MolToDofImage`. |
+
 ## `DofDrawSettings`
 
 ```python
@@ -97,6 +171,8 @@ Extra keyword arguments are ignored for compatibility with the previous settings
 from rdkit_dof import (
     DofDrawSettings,
     MolToDofImage,
+    MolsToDofGif,
+    MolsToDofSvgAnimation,
     MolsToGridDofImage,
     dofconfig,
 )

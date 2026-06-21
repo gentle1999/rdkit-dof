@@ -21,6 +21,11 @@ MMFFOptimizeMolecule(mol)
 MolToDofImage(mol, legend="Ethanol", filename="ethanol.svg")
 ```
 
+## Legend 文本
+
+不支持 Unicode/非 ASCII legend；`rdkit-dof` 会发出 warning 并原样交给
+RDKit。为保证可移植输出，请使用 ASCII legend。
+
 ## 输出模式
 
 默认输出 SVG。设置 `use_svg=False` 可输出 PNG。
@@ -68,6 +73,46 @@ MolsToGridDofImage(
     mols,
     highlightAtomLists=[[0], [], [1, 2]],
     highlightBondLists=[[0], [], []],
+)
+```
+
+## 动图绘制
+
+当一组 RDKit 分子需要生成动图时，使用 `MolsToDofGif`。每个分子会被渲染为一帧。
+
+```python
+from rdkit_dof import MolsToDofGif
+
+gif_image = MolsToDofGif(
+    mols,
+    size=(500, 400),
+    legends=["Frame 1", "Frame 2", "Frame 3"],
+    duration=250,
+    filename="molecules.gif",
+)
+```
+
+如果不同帧需要不同停留时间，可以传入逐帧 `duration` 序列。
+
+```python
+gif_bytes = MolsToDofGif(
+    mols,
+    duration=[150, 250, 400],
+    return_image=False,
+)
+```
+
+如果需要矢量 SVG 动画输出，可以使用 `MolsToDofSvgAnimation`。
+
+```python
+from rdkit_dof import MolsToDofSvgAnimation
+
+svg_text = MolsToDofSvgAnimation(
+    mols,
+    size=(500, 400),
+    duration=250,
+    return_image=False,
+    filename="molecules.svg",
 )
 ```
 

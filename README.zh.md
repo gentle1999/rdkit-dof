@@ -14,8 +14,8 @@
 
 ## 功能亮点
 
-- 支持单分子和分子网格绘图，API 风格接近 RDKit。
-- 支持 SVG 和 PNG 输出，也可直接保存到文件。
+- 支持单分子、分子网格、GIF 动图和 SVG 动画绘制，API 风格接近 RDKit。
+- 支持 SVG、PNG、GIF 和 SVG 动画输出，也可直接保存到文件。
 - 高亮原子和键使用饱和色，其余部分保留景深淡化效果。
 - 内置 `default`、`nature`、`jacs`、`dark` 四种样式。
 - 使用标准库 dataclass 配置，支持全局配置和局部配置。
@@ -41,6 +41,12 @@
 | :-------------------------------------------------------: | :---------------------------------------------------: |
 | ![Highlight Single](assets/showcase_highlight_single.svg) | ![Highlight Grid](assets/showcase_highlight_grid.svg) |
 
+### 动画
+
+|                      GIF 动图                       |                      SVG 动画                       |
+| :-------------------------------------------------: | :-------------------------------------------------: |
+| ![DOF GIF animation](assets/showcase_animation.gif) | ![DOF SVG animation](assets/showcase_animation.svg) |
+
 ## 安装
 
 ```bash
@@ -53,7 +59,7 @@ pip install rdkit-dof
 from rdkit import Chem
 from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
-from rdkit_dof import MolToDofImage, dofconfig
+from rdkit_dof import MolToDofImage, MolsToDofGif, MolsToDofSvgAnimation, dofconfig
 
 mol = Chem.MolFromSmiles("CCO")
 mol = Chem.AddHs(mol)
@@ -68,7 +74,13 @@ MolToDofImage(
     legend="Ethanol",
     filename="ethanol.svg",
 )
+
+MolsToDofGif([mol, mol], size=(600, 500), duration=250, filename="mols.gif")
+MolsToDofSvgAnimation([mol, mol], size=(600, 500), duration=250, filename="mols.svg")
 ```
+
+不支持 Unicode/非 ASCII legend；`rdkit-dof` 会发出 warning 并原样交给
+RDKit。为保证可移植输出，请使用 ASCII legend。
 
 ## 示例
 
@@ -81,8 +93,8 @@ MolToDofImage(
 
 ## 文档
 
-- [使用指南](docs/zh/usage.md)：单分子、网格、高亮、notebook 集成和自定义 RDKit 绘制说明。
-- [API 参考](docs/zh/api.md)：`MolToDofImage`、`MolsToGridDofImage` 和 `DofDrawSettings` 的参数说明。
+- [使用指南](docs/zh/usage.md)：单分子、网格、动图、高亮、notebook 集成和自定义 RDKit 绘制说明。
+- [API 参考](docs/zh/api.md)：`MolToDofImage`、`MolsToGridDofImage`、`MolsToDofGif`、`MolsToDofSvgAnimation` 和 `DofDrawSettings` 的参数说明。
 - [配置说明](docs/zh/configuration.md)：全局配置、局部配置、`.env`、环境变量和预设样式。
 
 ## 兼容性
@@ -96,7 +108,7 @@ Python 3.8 安装会限制在最后兼容的 RDKit 版本线 (`<2024.3.6`)。
 ## 开发
 
 ```bash
-uv sync --all-extras --dev
+uv sync --group dev
 uv run pytest
 uv run ruff check .
 uv run mypy src
@@ -106,6 +118,7 @@ uv run pyright
 打开 notebook 示例：
 
 ```bash
+uv sync --group dev --group notebook
 uv run notebook examples/rdkit_dof_quickstart.zh.ipynb
 ```
 
