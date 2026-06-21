@@ -249,7 +249,9 @@ class DofDrawSettings:
             enable (bool): True to enable DOF rendering, False to restore RDKit default.
         """
         try:
-            from IPython.core.getipython import get_ipython
+            from IPython.core.getipython import (  # pyright: ignore[reportMissingImports]
+                get_ipython,
+            )
         except ImportError:
             return
         get_ipython_func = cast(Any, get_ipython)

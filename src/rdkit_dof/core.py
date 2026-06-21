@@ -48,7 +48,7 @@ ET.register_namespace("", SVG_NS)
 
 _SVG: Any = None
 try:
-    from IPython.core.display import SVG
+    from IPython.core.display import SVG  # pyright: ignore[reportMissingImports]
 except ImportError:
     svg_support = False
 else:

@@ -8,7 +8,7 @@ from rdkit.Chem.rdDistGeom import EmbedMolecule
 from rdkit_dof.core import DofDrawSettings, MolsToGridDofImage
 
 try:
-    from IPython.core.display import SVG
+    from IPython.core.display import SVG  # pyright: ignore[reportMissingImports]
 except ImportError:
     SVG = None
 

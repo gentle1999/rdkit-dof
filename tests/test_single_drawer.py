@@ -18,7 +18,7 @@ from rdkit_dof.config import dofconfig
 from rdkit_dof.core import MolToDofImage
 
 try:
-    from IPython.core.display import SVG
+    from IPython.core.display import SVG  # pyright: ignore[reportMissingImports]
 except ImportError:
     SVG = None
 
