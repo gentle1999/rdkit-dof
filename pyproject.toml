@@ -57,6 +57,11 @@ notebook = [
     "nbformat>=5.10.4",
     "notebook>=7.3.3; python_version >= '3.9' or sys_platform != 'win32'",
 ]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
