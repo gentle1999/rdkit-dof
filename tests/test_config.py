@@ -1,6 +1,13 @@
+from importlib import import_module
+from types import SimpleNamespace
+
 import pytest
+from IPython.core.formatters import DisplayFormatter, HTMLFormatter, SVGFormatter
+from rdkit import Chem
 
 from rdkit_dof.config import DofDrawSettings
+
+IPythonConsole = import_module("rdkit.Chem.Draw.IPythonConsole")
 
 ENV_KEYS = [
     "RDKIT_DOF_PRESET_STYLE",
@@ -112,3 +119,86 @@ def test_invalid_style_raises_value_error():
 def test_invalid_color_raises_value_error():
     with pytest.raises(ValueError, match="fog_color"):
         DofDrawSettings(fog_color=(0.1, 0.2), env_file=None)
+
+
+def test_ipython_integration_keeps_sdf_iprop_table_with_dof_svg(
+    monkeypatch, mocker, tmp_path
+):
+    source_mol = Chem.MolFromSmiles("CCO")
+    source_mol.SetProp("_Name", "ethanol")
+    source_mol.SetProp("atom.iprop.score", "1 2 3")
+    source_mol.SetProp("unsafe<name", "<script>alert('x')</script>")
+    sdf_file = tmp_path / "with_iprop.sdf"
+    writer = Chem.SDWriter(str(sdf_file))
+    writer.write(source_mol)
+    writer.close()
+    mol = Chem.SDMolSupplier(str(sdf_file))[0]
+    assert mol is not None
+    assert mol.HasProp("atom.iprop.score")
+
+    display_formatter = DisplayFormatter()
+    shell = SimpleNamespace(display_formatter=display_formatter)
+    monkeypatch.setattr("IPython.core.getipython.get_ipython", lambda: shell)
+    monkeypatch.setattr(IPythonConsole, "ipython_showProperties", True)
+    monkeypatch.setattr(IPythonConsole, "ipython_maxProperties", -1)
+    mol_to_dof_image = mocker.patch(
+        "rdkit_dof.core.MolToDofImage",
+        return_value="<?xml version='1.0'?><svg>DOF</svg>",
+    )
+
+    settings = DofDrawSettings(env_file=None)
+    settings.enable_ipython_integration(True)
+
+    mime_bundle, _ = display_formatter.format(mol)
+    html_output = mime_bundle["text/html"]
+    assert "<svg>DOF</svg>" in html_output
+    assert "<?xml" not in html_output
+    assert "data:image/png;base64," not in html_output
+    assert "atom.iprop.score" in html_output
+    assert "1 2 3" in html_output
+    assert "unsafe&lt;name" in html_output
+    assert "&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;" in html_output
+    mol_to_dof_image.assert_any_call(
+        mol,
+        legend="ethanol",
+        use_svg=True,
+        return_image=False,
+        settings=settings,
+    )
+
+
+def test_ipython_integration_uses_svg_only_without_properties(monkeypatch, mocker):
+    svg_formatter = SVGFormatter()
+    html_formatter = HTMLFormatter()
+
+    def previous_svg_formatter(mol):
+        return "<svg>RDKit</svg>"
+
+    def previous_html_formatter(mol):
+        return "<div>RDKit</div>"
+
+    svg_formatter.for_type(Chem.Mol, previous_svg_formatter)
+    html_formatter.for_type(Chem.Mol, previous_html_formatter)
+    display_formatter = SimpleNamespace(
+        formatters={
+            "image/svg+xml": svg_formatter,
+            "text/html": html_formatter,
+        }
+    )
+    shell = SimpleNamespace(display_formatter=display_formatter)
+    monkeypatch.setattr("IPython.core.getipython.get_ipython", lambda: shell)
+    monkeypatch.setattr(IPythonConsole, "ipython_showProperties", True)
+    mocker.patch("rdkit_dof.core.MolToDofImage", return_value="<svg>DOF</svg>")
+    mol = Chem.MolFromSmiles("CCO")
+
+    settings = DofDrawSettings(env_file=None)
+    settings.enable_ipython_integration(True)
+
+    assert html_formatter(mol) is None
+    assert svg_formatter(mol) == "<svg>DOF</svg>"
+
+    settings.enable_ipython_integration(False)
+    assert svg_formatter.type_printers[Chem.Mol] is previous_svg_formatter
+    assert html_formatter.type_printers[Chem.Mol] is previous_html_formatter
+    assert Chem.RWMol not in svg_formatter.type_printers
+    assert Chem.RWMol not in html_formatter.type_printers

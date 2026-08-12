@@ -101,21 +101,33 @@ ignore_missing_imports = true
 target-version = "py38"
 # 行宽 (符合常见标准，Black 默认为 88)
 line-length = 88
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.ipynb",
+    "pyproject.toml",
+]
+force-exclude = true
 
 [tool.ruff.lint]
 # 启用的规则集
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes (核心逻辑错误)
-    "I",   # isort (导入排序)
-    "B",   # flake8-bugbear (常见 Bug 模式)
-    "UP",  # pyupgrade (自动升级旧语法，如 Type Hint)
-    "N",   # pep8-naming (命名规范)
+    "E",
+    "W",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
 ]
-# 忽略的规则
 ignore = [
-    "E501", # 忽略行过长 (由 Formatter 自动处理，无需 Linter 报错)
+    "E501", # line too long
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
 ]
 
 # 针对特定文件的豁免

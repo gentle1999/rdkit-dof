@@ -7,11 +7,13 @@ Description: 请填写简介
 """
 
 import ast
+import html
 import json
 import os
 from collections.abc import Mapping as MappingABC
 from collections.abc import Sequence as SequenceABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from importlib import import_module
 from pathlib import Path
 from typing import Any, Dict, Literal, Mapping, Optional, Tuple, Union, cast
 
@@ -179,6 +181,9 @@ class DofDrawSettings:
     default_size: Size
     enable_ipython: bool
     atom_colors: AtomColorMap
+    _ipython_formatter_backups: Dict[Tuple[int, Any], object] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __init__(
         self,
@@ -214,6 +219,7 @@ class DofDrawSettings:
         self.atom_colors = _coerce_atom_colors(
             _select_value("atom_colors", atom_colors, env_values, {})
         )
+        self._ipython_formatter_backups = {}
         self._apply_style_logic(self.preset_style)
 
     def _apply_style_logic(self, style: StyleName) -> None:
@@ -258,26 +264,82 @@ class DofDrawSettings:
         ip = get_ipython_func()
         if ip is None:
             return
-        svg_formatter = ip.display_formatter.formatters["image/svg+xml"]
+        formatters = {
+            "image/svg+xml": ip.display_formatter.formatters["image/svg+xml"],
+            "text/html": ip.display_formatter.formatters["text/html"],
+        }
 
         if enable:
             from .core import MolToDofImage
 
-            def _dof_drawer_hook(mol: Union[Mol, RWMol]) -> str:
+            def _dof_drawer_hook(mol: Union[Mol, RWMol], legend: str = "") -> str:
                 return MolToDofImage(
                     mol,
+                    legend=legend,
                     use_svg=True,
-                    return_image=False,  # 必须为 False，返回 SVG 源码字符串
-                    settings=self,  # 绑定当前配置实例
+                    return_image=False,
+                    settings=self,
                 )
 
-            svg_formatter.for_type(Mol, _dof_drawer_hook)
-            svg_formatter.for_type(RWMol, _dof_drawer_hook)
+            def _dof_drawer_html_hook(
+                mol: Union[Mol, RWMol],
+            ) -> Optional[str]:
+                ipython_console = import_module("rdkit.Chem.Draw.IPythonConsole")
+
+                props = mol.GetPropsAsDict()
+                if not ipython_console.ipython_showProperties or not props:
+                    return None
+
+                legend = mol.GetProp("_Name") if mol.HasProp("_Name") else ""
+                svg_text = _dof_drawer_hook(mol, legend=legend)
+                svg_start = svg_text.find("<svg")
+                if svg_start >= 0:
+                    svg_text = svg_text[svg_start:]
+                rows = [
+                    '<tr><td colspan="2" style="text-align: center;">'
+                    f"{svg_text}</td></tr>"
+                ]
+                max_properties = int(ipython_console.ipython_maxProperties)
+                for index, (prop_name, prop_value) in enumerate(props.items()):
+                    if max_properties >= 0 and index >= max_properties:
+                        rows.append(
+                            '<tr><td colspan="2" style="text-align: center">'
+                            "Property list truncated.<br />Increase "
+                            "IPythonConsole.ipython_maxProperties (or set it to -1) "
+                            "to see more properties.</td></tr>"
+                        )
+                        break
+                    rows.append(
+                        '<tr><th style="text-align: right">'
+                        f"{html.escape(str(prop_name))}</th>"
+                        '<td style="text-align: left">'
+                        f"{html.escape(str(prop_value))}</td></tr>"
+                    )
+                return f"<table>{''.join(rows)}</table>"
+
+            hooks = {
+                "image/svg+xml": _dof_drawer_hook,
+                "text/html": _dof_drawer_html_hook,
+            }
+            for mime_type, formatter in formatters.items():
+                for mol_type in (Mol, RWMol):
+                    backup_key = (id(formatter), mol_type)
+                    if backup_key not in self._ipython_formatter_backups:
+                        self._ipython_formatter_backups[backup_key] = (
+                            formatter.type_printers.get(mol_type, _UNSET)
+                        )
+                    formatter.for_type(mol_type, hooks[mime_type])
         else:
-            if Mol in svg_formatter.type_printers:
-                svg_formatter.type_printers.pop(Mol)
-            if RWMol in svg_formatter.type_printers:
-                svg_formatter.type_printers.pop(RWMol)
+            for formatter in formatters.values():
+                for mol_type in (Mol, RWMol):
+                    backup_key = (id(formatter), mol_type)
+                    if backup_key not in self._ipython_formatter_backups:
+                        continue
+                    previous_printer = self._ipython_formatter_backups.pop(backup_key)
+                    if previous_printer is None or previous_printer is _UNSET:
+                        formatter.type_printers.pop(mol_type, None)
+                    else:
+                        formatter.type_printers[mol_type] = previous_printer
 
 
 dofconfig = DofDrawSettings()
