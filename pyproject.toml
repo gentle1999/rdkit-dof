@@ -152,7 +152,7 @@ known-first-party = ["rdkit_dof"] # 将本项目识别为第一方库，排序�
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src"]
 pythonVersion = "3.8"
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false

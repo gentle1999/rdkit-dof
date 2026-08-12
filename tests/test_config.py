@@ -2,12 +2,9 @@ from importlib import import_module
 from types import SimpleNamespace
 
 import pytest
-from IPython.core.formatters import DisplayFormatter, HTMLFormatter, SVGFormatter
 from rdkit import Chem
 
 from rdkit_dof.config import DofDrawSettings
-
-IPythonConsole = import_module("rdkit.Chem.Draw.IPythonConsole")
 
 ENV_KEYS = [
     "RDKIT_DOF_PRESET_STYLE",
@@ -124,6 +121,8 @@ def test_invalid_color_raises_value_error():
 def test_ipython_integration_keeps_sdf_iprop_table_with_dof_svg(
     monkeypatch, mocker, tmp_path
 ):
+    formatters = pytest.importorskip("IPython.core.formatters")
+    ipython_console = import_module("rdkit.Chem.Draw.IPythonConsole")
     source_mol = Chem.MolFromSmiles("CCO")
     source_mol.SetProp("_Name", "ethanol")
     source_mol.SetProp("atom.iprop.score", "1 2 3")
@@ -136,11 +135,11 @@ def test_ipython_integration_keeps_sdf_iprop_table_with_dof_svg(
     assert mol is not None
     assert mol.HasProp("atom.iprop.score")
 
-    display_formatter = DisplayFormatter()
+    display_formatter = formatters.DisplayFormatter()
     shell = SimpleNamespace(display_formatter=display_formatter)
     monkeypatch.setattr("IPython.core.getipython.get_ipython", lambda: shell)
-    monkeypatch.setattr(IPythonConsole, "ipython_showProperties", True)
-    monkeypatch.setattr(IPythonConsole, "ipython_maxProperties", -1)
+    monkeypatch.setattr(ipython_console, "ipython_showProperties", True)
+    monkeypatch.setattr(ipython_console, "ipython_maxProperties", -1)
     mol_to_dof_image = mocker.patch(
         "rdkit_dof.core.MolToDofImage",
         return_value="<?xml version='1.0'?><svg>DOF</svg>",
@@ -168,8 +167,10 @@ def test_ipython_integration_keeps_sdf_iprop_table_with_dof_svg(
 
 
 def test_ipython_integration_uses_svg_only_without_properties(monkeypatch, mocker):
-    svg_formatter = SVGFormatter()
-    html_formatter = HTMLFormatter()
+    formatters = pytest.importorskip("IPython.core.formatters")
+    ipython_console = import_module("rdkit.Chem.Draw.IPythonConsole")
+    svg_formatter = formatters.SVGFormatter()
+    html_formatter = formatters.HTMLFormatter()
 
     def previous_svg_formatter(mol):
         return "<svg>RDKit</svg>"
@@ -187,7 +188,7 @@ def test_ipython_integration_uses_svg_only_without_properties(monkeypatch, mocke
     )
     shell = SimpleNamespace(display_formatter=display_formatter)
     monkeypatch.setattr("IPython.core.getipython.get_ipython", lambda: shell)
-    monkeypatch.setattr(IPythonConsole, "ipython_showProperties", True)
+    monkeypatch.setattr(ipython_console, "ipython_showProperties", True)
     mocker.patch("rdkit_dof.core.MolToDofImage", return_value="<svg>DOF</svg>")
     mol = Chem.MolFromSmiles("CCO")
 
